@@ -9,7 +9,7 @@ function buildQRUrl(amount, content) {
   return `${base}?amount=${amount}&addInfo=${encodeURIComponent(content)}&accountName=${encodeURIComponent(ACCOUNT_NAME)}`;
 }
 
-export function QRModal({ person, amount, week, year, onClose }) {
+export function QRModal({ person, amount, week, onClose }) {
   const content = `Lunch Tuan ${week} ${person}`;
   const qrUrl = buildQRUrl(amount, content);
 

@@ -11,6 +11,10 @@ function getWeekNumber(date = new Date()) {
   return Math.floor((d - startOfWeek1) / (7 * 86400000)) + 1;
 }
 
+function weeksInYear(y) {
+  return getWeekNumber(new Date(y, 11, 28));
+}
+
 export function DebtPage() {
   const currentWeek = getWeekNumber();
   const currentYear = new Date().getFullYear();
@@ -35,6 +39,26 @@ export function DebtPage() {
     },
   });
 
+  function goBack() {
+    if (week > 1) {
+      setWeek(w => w - 1);
+    } else {
+      const prevYear = year - 1;
+      setYear(prevYear);
+      setWeek(weeksInYear(prevYear));
+    }
+  }
+
+  function goForward() {
+    const maxWeek = weeksInYear(year);
+    if (week < maxWeek) {
+      setWeek(w => w + 1);
+    } else {
+      setYear(y => y + 1);
+      setWeek(1);
+    }
+  }
+
   const totalAmount = data.debts.reduce((s, d) => s + d.amount, 0);
   const paidAmount = data.debts.filter(d => d.status === 'paid').reduce((s, d) => s + d.amount, 0);
 
@@ -52,19 +76,19 @@ export function DebtPage() {
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-          <button onClick={() => setWeek(w => w - 1)} style={{ fontSize: 18, color: '#c084fc', cursor: 'pointer', background: 'none', border: 'none', fontWeight: 700 }}>‹</button>
+          <button onClick={goBack} style={{ fontSize: 18, color: '#c084fc', cursor: 'pointer', background: 'none', border: 'none', fontWeight: 700 }}>‹</button>
           <div>
             <span style={{ fontSize: 14, fontWeight: 700 }}>Tuần {week}</span>
             <span style={{ fontSize: 12, color: '#aaa', marginLeft: 3 }}> · {year}</span>
           </div>
-          <button onClick={() => setWeek(w => w + 1)} style={{ fontSize: 18, color: '#c084fc', cursor: 'pointer', background: 'none', border: 'none', fontWeight: 700 }}>›</button>
+          <button onClick={goForward} style={{ fontSize: 18, color: '#c084fc', cursor: 'pointer', background: 'none', border: 'none', fontWeight: 700 }}>›</button>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {data.debts.map(d => (
             <div key={d.person_name} style={{ background: '#fff', borderRadius: 14, padding: '14px 16px', boxShadow: '0 2px 8px rgba(180,140,220,0.07)', border: '1.5px solid', borderColor: d.status === 'paid' ? '#a7f3d0' : '#f9a8d4', display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: '#fff', background: d.status === 'paid' ? 'linear-gradient(135deg,#6ee7b7,#10b981)' : 'linear-gradient(135deg,#f9a8d4,#c084fc)' }}>
-                {d.person_name[0].toUpperCase()}
+                {(d.person_name?.[0] ?? '?').toUpperCase()}
               </div>
 
               <div style={{ flex: 1 }}>
@@ -94,7 +118,7 @@ export function DebtPage() {
       </div>
 
       {qrPerson && (
-        <QRModal person={qrPerson.person} amount={qrPerson.amount} week={week} year={year} onClose={() => setQrPerson(null)} />
+        <QRModal person={qrPerson.person} amount={qrPerson.amount} week={week} onClose={() => setQrPerson(null)} />
       )}
     </div>
   );
