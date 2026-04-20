@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   apps: [{
     name: 'lunchtime',
     script: './server/index.js',
