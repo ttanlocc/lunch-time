@@ -11,5 +11,9 @@ eventsRouter.get('/', (req, res) => {
   res.flushHeaders();
   res.write('event: ping\ndata: {}\n\n');
   addClient(res);
-  req.on('close', () => removeClient(res));
+  const heartbeat = setInterval(() => res.write(': ping\n\n'), 30000);
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    removeClient(res);
+  });
 });

@@ -78,9 +78,9 @@ menuRouter.post('/import', (req, res) => {
       for (const a of itemAddons) upsertAddon.run(row.id, a.name, a.price);
     }
 
-    const todayItems = db.prepare('SELECT mi.name FROM daily_menu dm JOIN menu_items mi ON mi.id = dm.menu_item_id WHERE dm.date = ? AND dm.is_available = 1').all(today);
-    const availableNames = new Set(items.map(i => i.name));
-    result.unavailable = todayItems.map(r => r.name).filter(n => !availableNames.has(n));
+    const todayItems = db.prepare('SELECT mi.name, mi.normalized_name FROM daily_menu dm JOIN menu_items mi ON mi.id = dm.menu_item_id WHERE dm.date = ? AND dm.is_available = 1').all(today);
+    const availableNormalizedNames = new Set(items.map(i => i.normalizedName));
+    result.unavailable = todayItems.filter(r => !availableNormalizedNames.has(r.normalized_name)).map(r => r.name);
 
     const availableIds = items.map(i => db.prepare('SELECT id FROM menu_items WHERE normalized_name = ?').get(i.normalizedName)?.id).filter(Boolean);
     if (availableIds.length > 0) {

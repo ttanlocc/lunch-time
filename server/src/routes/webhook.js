@@ -15,12 +15,24 @@ export function parseSePayContent(content) {
 }
 
 webhookRouter.post('/sepay', (req, res) => {
+  const WEBHOOK_SECRET = process.env.SEPAY_WEBHOOK_SECRET;
+  if (WEBHOOK_SECRET && req.headers['x-sepay-secret'] !== WEBHOOK_SECRET) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
   const { content, transferAmount, transactionDate, referenceCode } = req.body;
 
   const parsed = parseSePayContent(content || '');
   if (!parsed) return res.json({ success: false, reason: 'content_no_match' });
 
   const db = getDb();
+
+  // Look up canonical name from orders to handle case mismatches
+  const canonicalRow = db.prepare(
+    `SELECT person_name FROM orders WHERE lower(person_name) = lower(?) ORDER BY created_at DESC LIMIT 1`
+  ).get(parsed.personName);
+  const canonicalName = canonicalRow?.person_name ?? parsed.personName;
+
   const year = transactionDate ? new Date(transactionDate).getFullYear() : new Date().getFullYear();
 
   db.prepare(`
@@ -29,7 +41,7 @@ webhookRouter.post('/sepay', (req, res) => {
     ON CONFLICT(person_name, week_number, year)
     DO UPDATE SET status='paid', sepay_ref=@sepay_ref, paid_at=@paid_at, amount=@amount
   `).run({
-    person_name: parsed.personName,
+    person_name: canonicalName,
     week_number: parsed.week,
     year,
     amount: transferAmount || 0,
@@ -38,7 +50,7 @@ webhookRouter.post('/sepay', (req, res) => {
   });
 
   broadcast('payment_confirmed', {
-    person_name: parsed.personName,
+    person_name: canonicalName,
     week: parsed.week,
     year,
     amount: transferAmount,

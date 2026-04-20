@@ -1,7 +1,7 @@
 // server/src/services/menuParser.js
 
 export function normalizeName(name) {
-  return name.replace(/[:\-,]/g, '').trim().toLowerCase();
+  return name.replace(/[:\-,]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
 function parsePrice(raw) {
