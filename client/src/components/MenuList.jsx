@@ -3,15 +3,15 @@
 function AddonWidget({ addons, selectedAddonIds, onToggleAddon }) {
   if (!addons?.length) return null;
   return (
-    <div style={{ margin: '4px 0 6px 44px', background: 'linear-gradient(135deg,#fce7f3,#ede9fe)', borderRadius: 10, padding: '9px 12px' }}>
-      <div style={{ fontSize: 10, fontWeight: 700, color: '#a855f7', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>➕ Gọi thêm</div>
+    <div style={{ margin: '4px 0 6px 44px', background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', borderRadius: 'var(--radius-sm)', padding: '9px 12px' }}>
+      <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-secondary)', marginBottom: 7, textTransform: 'uppercase', letterSpacing: '0.5px' }}>➕ Gọi thêm</div>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {addons.map(a => (
           <button key={a.id} onClick={() => onToggleAddon(a.id)} style={{
-            padding: '5px 13px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
-            borderColor: selectedAddonIds.includes(a.id) ? 'transparent' : '#e0d6f0',
-            background: selectedAddonIds.includes(a.id) ? 'linear-gradient(135deg,#f9a8d4,#c084fc)' : '#fff',
-            color: selectedAddonIds.includes(a.id) ? '#fff' : '#7c6f8e',
+            padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: '1.5px solid',
+            borderColor: selectedAddonIds.includes(a.id) ? 'transparent' : 'var(--color-border)',
+            background: selectedAddonIds.includes(a.id) ? 'var(--gradient-primary)' : 'var(--color-card)',
+            color: selectedAddonIds.includes(a.id) ? '#fff' : 'var(--color-text-muted)',
           }}>
             {selectedAddonIds.includes(a.id) ? '✓ ' : ''}{a.name} +{a.price / 1000}k
           </button>
@@ -21,56 +21,121 @@ function AddonWidget({ addons, selectedAddonIds, onToggleAddon }) {
   );
 }
 
-export function MenuList({ items, selectedItemId, selectedAddonIds, onSelectItem, onToggleAddon }) {
-  const categories = [
-    { id: 'main', label: '🍚 Món chính' },
-    { id: 'extra', label: '➕ Gọi thêm' },
-  ];
+const FOOD_TYPE_CONFIG = {
+  'Cơm': { icon: '🍚', color: '#ec4899' },
+  'Bún': { icon: '🍜', color: '#f97316' },
+  'Mì': { icon: '🍝', color: '#eab308' },
+  'Nui': { icon: '🥗', color: '#84cc16' },
+  'Gọi thêm': { icon: '➕', color: '#06b6d4' },
+};
 
-  const byCategory = {};
-  for (const item of items) {
-    if (!byCategory[item.category]) byCategory[item.category] = [];
-    byCategory[item.category].push(item);
-  }
+function getFoodType(item) {
+  if (item.category === 'extra') return 'Gọi thêm';
+  const name = item.name.toLowerCase();
+  if (name.startsWith('bún')) return 'Bún';
+  if (name.startsWith('mì')) return 'Mì';
+  if (name.startsWith('nui')) return 'Nui';
+  // Default to Cơm for everything else (cơm, kho, rim, etc.)
+  return 'Cơm';
+}
+
+function CategoryCard({ category, items, selectedItemId, selectedAddonIds, onSelectItem, onToggleAddon }) {
+  const config = FOOD_TYPE_CONFIG[category] || { icon: '📦', color: '#7c6f8e' };
 
   return (
-    <div style={{ background: '#fff', borderRadius: 14, padding: 14, boxShadow: '0 2px 8px rgba(180,140,220,0.07)' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#c084fc', marginBottom: 12 }}>
-        Menu hôm nay
-      </div>
-      {Object.entries(byCategory).map(([cat, catItems]) => (
-        <div key={cat}>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: '#bbb', letterSpacing: 1, margin: '10px 0 6px', paddingLeft: 2 }}>
-            {categories.find(c => c.id === cat)?.label || cat}
-          </div>
-          {catItems.map(item => (
-            <div key={item.id}>
-              <div onClick={() => onSelectItem(item.id)} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-                borderRadius: 10, cursor: 'pointer', border: '1.5px solid',
-                borderColor: selectedItemId === item.id ? '#f9a8d4' : 'transparent',
-                background: selectedItemId === item.id ? '#fdf0f8' : 'transparent',
-                transition: 'all 0.15s',
-              }}>
-                <div style={{
-                  width: 21, height: 21, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
-                  background: selectedItemId === item.id ? 'linear-gradient(135deg,#f9a8d4,#c084fc)' : 'none',
-                  border: selectedItemId === item.id ? 'none' : '2px solid #e0d6f0',
-                  color: selectedItemId === item.id ? '#fff' : 'transparent',
-                }}>
-                  {selectedItemId === item.id ? '✓' : ''}
-                </div>
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.name}</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: selectedItemId === item.id ? '#ec4899' : '#bbb' }}>
-                  {(item.price / 1000).toFixed(0)}k
-                </div>
-              </div>
-              {selectedItemId === item.id && (
-                <AddonWidget addons={item.addons} selectedAddonIds={selectedAddonIds} onToggleAddon={onToggleAddon} />
-              )}
-            </div>
-          ))}
+    <div style={{
+      background: 'var(--color-card)',
+      borderRadius: 'var(--radius-lg)',
+      boxShadow: 'var(--shadow-card)',
+      overflow: 'hidden',
+    }}>
+      {/* Category Header */}
+      <div style={{
+        background: `linear-gradient(135deg, ${config.color}15, ${config.color}08)`,
+        borderBottom: `2px solid ${config.color}20`,
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        <span style={{ fontSize: 20 }}>{config.icon}</span>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: config.color }}>{category}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{items.length} món</div>
         </div>
+      </div>
+
+      {/* Items Grid */}
+      <div style={{ padding: 8 }}>
+        {items.map(item => (
+          <div key={item.id}>
+            <div onClick={() => onSelectItem(item.id)} style={{
+              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+              border: '1.5px solid',
+              borderColor: selectedItemId === item.id ? 'var(--color-primary)' : 'transparent',
+              background: selectedItemId === item.id ? 'var(--color-primary-light)' : 'transparent',
+              transition: 'all 0.15s',
+              marginBottom: 2,
+            }}>
+              <div style={{
+                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                background: selectedItemId === item.id ? 'var(--gradient-primary)' : 'none',
+                border: selectedItemId === item.id ? 'none' : '2px solid var(--color-border)',
+                color: selectedItemId === item.id ? '#fff' : 'transparent',
+              }}>
+                {selectedItemId === item.id ? '✓' : ''}
+              </div>
+              <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.name}</div>
+              <div style={{
+                fontSize: 13, fontWeight: 700,
+                color: selectedItemId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                background: selectedItemId === item.id ? 'transparent' : 'var(--color-border)',
+                padding: '2px 8px',
+                borderRadius: 'var(--radius-pill)',
+              }}>
+                {(item.price / 1000).toFixed(0)}k
+              </div>
+            </div>
+            {selectedItemId === item.id && (
+              <AddonWidget addons={item.addons} selectedAddonIds={selectedAddonIds} onToggleAddon={onToggleAddon} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function MenuList({ items, selectedItemId, selectedAddonIds, onSelectItem, onToggleAddon }) {
+  // Group by food type (Cơm, Bún, Mì, etc.)
+  const byFoodType = {};
+  for (const item of items) {
+    const foodType = getFoodType(item);
+    if (!byFoodType[foodType]) byFoodType[foodType] = [];
+    byFoodType[foodType].push(item);
+  }
+
+  // Sort: Cơm → Bún → Mì → Nui → Gọi thêm
+  const typeOrder = ['Cơm', 'Bún', 'Mì', 'Nui', 'Gọi thêm'];
+  const sortedTypes = Object.keys(byFoodType).sort((a, b) => {
+    return (typeOrder.indexOf(a) === -1 ? 99 : typeOrder.indexOf(a)) -
+           (typeOrder.indexOf(b) === -1 ? 99 : typeOrder.indexOf(b));
+  });
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {sortedTypes.map(foodType => (
+        <CategoryCard
+          key={foodType}
+          category={foodType}
+          items={byFoodType[foodType]}
+          selectedItemId={selectedItemId}
+          selectedAddonIds={selectedAddonIds}
+          onSelectItem={onSelectItem}
+          onToggleAddon={onToggleAddon}
+        />
       ))}
     </div>
   );
