@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunch App v2</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; background: #f0edf8; color: #2d2d3a; font-size: 14px; }
+
+  .page-meta { text-align:center; padding: 24px 0 14px; }
+  .page-meta h1 { font-size: 18px; font-weight: 700; color: #2d2d3a; }
+  .page-meta p { font-size: 12px; color: #aaa; margin-top: 3px; }
+
+  .screen-tabs { display:flex; justify-content:center; gap:8px; padding:0 0 18px; }
+  .stab { padding:7px 18px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid #e0d6f0; background:#fff; color:#aaa; }
+  .stab.active { background:linear-gradient(135deg,#f9a8d4,#93c5fd); color:#fff; border-color:transparent; }
+
+  .app-shell { max-width:1100px; margin:0 auto 40px; padding:0 24px; display:flex; height:600px; background:#fff; border-radius:24px; box-shadow:0 8px 40px rgba(180,140,220,0.18); overflow:hidden; }
+
+  /* Sidebar */
+  .sidebar { width:200px; flex-shrink:0; background:linear-gradient(180deg,#fce7f3 0%,#ede9fe 100%); padding:20px 14px; display:flex; flex-direction:column; gap:4px; border-right:1px solid rgba(255,255,255,0.6); }
+  .sidebar-logo { font-size:16px; font-weight:800; margin-bottom:18px; padding:0 4px; background:linear-gradient(135deg,#ec4899,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:11px; cursor:pointer; font-size:12px; font-weight:500; color:#7c6f8e; }
+  .nav-item.active { background:#fff; color:#ec4899; font-weight:700; box-shadow:0 2px 8px rgba(236,72,153,0.1); }
+  .nav-icon { font-size:15px; width:20px; text-align:center; }
+  .sidebar-divider { height:1px; background:rgba(180,160,220,0.2); margin:6px 0; }
+  .sidebar-bottom { margin-top:auto; }
+  .week-badge { background:rgba(255,255,255,0.7); border-radius:10px; padding:9px 11px; font-size:11px; color:#7c6f8e; }
+  .week-badge strong { display:block; color:#ec4899; font-size:12px; margin-bottom:2px; }
+
+  /* Main */
+  .main { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-bottom:1px solid #f5f0fb; flex-shrink:0; background:#fff; }
+  .topbar h2 { font-size:15px; font-weight:700; }
+  .topbar span { font-size:11px; color:#aaa; }
+  .topbar-right { display:flex; gap:8px; align-items:center; }
+  .badge { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; }
+  .badge-timer { background:linear-gradient(135deg,#fce7f3,#ede9fe); color:#a855f7; }
+  .btn { padding:7px 14px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+  .btn-danger { background:linear-gradient(135deg,#fca5a5,#f472b6); color:#fff; }
+  .btn-outline { background:#fff; border:1.5px solid #e0d6f0; color:#7c6f8e; }
+
+  .content-body { flex:1; overflow-y:auto; padding:18px 22px; background:#fdf8ff; }
+
+  /* Panel */
+  .panel { background:#fff; border-radius:14px; padding:14px; box-shadow:0 2px 8px rgba(180,140,220,0.07); }
+  .panel-title { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#c084fc; margin-bottom:10px; }
+
+  /* ── SCREEN: ORDER ── */
+  .order-layout { display:grid; grid-template-columns:1fr 280px; gap:14px; }
+
+  /* Name quick-select */
+  .name-section { margin-bottom:14px; }
+  .name-label { font-size:11px; color:#aaa; font-weight:600; text-transform:uppercase; letter-spacing:1px; margin-bottom:7px; }
+  .name-chips { display:flex; gap:7px; flex-wrap:wrap; }
+  .name-chip { padding:7px 16px; border-radius:20px; font-size:13px; font-weight:600; border:1.5px solid #e0d6f0; background:#fff; color:#7c6f8e; cursor:pointer; transition:all 0.15s; }
+  .name-chip:hover { border-color:#f9a8d4; color:#ec4899; }
+  .name-chip.selected { background:linear-gradient(135deg,#f9a8d4,#c084fc); color:#fff; border-color:transparent; box-shadow:0 2px 8px rgba(192,132,252,0.3); }
+  .name-chip.new { border-style:dashed; color:#c084fc; }
+
+  /* Category pills */
+  .cat-pills { display:flex; gap:6px; margin-bottom:12px; }
+  .cat-pill { padding:5px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid #e0d6f0; background:#fff; color:#aaa; }
+  .cat-pill.active { background:linear-gradient(135deg,#fce7f3,#ede9fe); color:#a855f7; border-color:transparent; }
+
+  /* Menu list */
+  .menu-list { display:flex; flex-direction:column; gap:4px; }
+  .menu-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; cursor:pointer; border:1.5px solid transparent; transition:all 0.15s; }
+  .menu-row:hover { background:#fdf0f8; }
+  .menu-row.selected { background:#fdf0f8; border-color:#f9a8d4; }
+  .check-circle { width:21px; height:21px; border-radius:50%; border:2px solid #e0d6f0; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; }
+  .check-circle.checked { background:linear-gradient(135deg,#f9a8d4,#c084fc); border:none; color:#fff; }
+  .menu-name { flex:1; font-size:13px; font-weight:500; }
+  .menu-price { font-size:13px; font-weight:600; color:#bbb; }
+  .menu-price.sel { color:#ec4899; }
+
+  /* Addon widget — inline below selected item */
+  .addon-widget { margin:4px 0 4px 44px; background:linear-gradient(135deg,#fce7f3,#ede9fe); border-radius:10px; padding:9px 12px; }
+  .addon-widget-title { font-size:10px; font-weight:700; color:#a855f7; margin-bottom:7px; text-transform:uppercase; letter-spacing:0.5px; }
+  .addon-chips { display:flex; gap:6px; }
+  .addon-chip { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:600; border:1.5px solid rgba(255,255,255,0.8); background:#fff; color:#7c6f8e; cursor:pointer; }
+  .addon-chip.on { background:linear-gradient(135deg,#f9a8d4,#c084fc); color:#fff; border-color:transparent; }
+
+  /* Right panel */
+  .my-order-box { background:linear-gradient(135deg,#fce7f3,#ede9fe); border-radius:12px; padding:14px; margin-bottom:10px; }
+  .my-order-label { font-size:10px; color:#a855f7; font-weight:700; margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; }
+  .my-order-item { font-size:13px; font-weight:700; color:#2d2d3a; }
+  .my-order-addon { font-size:11px; color:#a855f7; margin-top:2px; }
+  .my-order-price { font-size:22px; font-weight:800; color:#ec4899; margin:6px 0 12px; }
+  .cta-btn { width:100%; padding:11px; border-radius:12px; border:none; background:linear-gradient(135deg,#f9a8d4,#c084fc); color:#fff; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 4px 14px rgba(192,132,252,0.35); }
+
+  .who-grid { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .who-chip { padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+  .who-chip.done { background:#d1fae5; color:#059669; }
+  .who-chip.waiting { background:#f3f4f6; color:#ccc; }
+
+  /* ── SCREEN: IMPORT ── */
+  .import-layout { display:grid; grid-template-columns:1fr 1fr; gap:16px; align-items:start; }
+  .import-textarea { width:100%; height:220px; border-radius:12px; border:1.5px solid #e0d6f0; background:#fdf8ff; padding:12px 14px; font-family:monospace; font-size:12px; color:#2d2d3a; resize:none; outline:none; line-height:1.7; }
+  .import-textarea:focus { border-color:#c084fc; }
+  .parse-btn { width:100%; padding:11px; border-radius:12px; border:none; margin-top:10px; background:linear-gradient(135deg,#93c5fd,#c084fc); color:#fff; font-size:13px; font-weight:700; cursor:pointer; }
+
+  /* Simplified result */
+  .parse-result { background:#fff; border-radius:14px; padding:16px; box-shadow:0 2px 8px rgba(180,140,220,0.07); }
+  .parse-result-title { font-size:12px; font-weight:700; color:#c084fc; text-transform:uppercase; letter-spacing:1px; margin-bottom:14px; }
+
+  .diff-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid #f5f0fb; }
+  .diff-row:last-child { border-bottom:none; }
+  .diff-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .diff-dot.on { background:#10b981; }
+  .diff-dot.new { background:#3b82f6; }
+  .diff-dot.off { background:#e5e7eb; }
+  .diff-name { flex:1; font-size:13px; font-weight:500; }
+  .diff-name.off { color:#ccc; text-decoration:line-through; }
+  .diff-price { font-size:12px; color:#aaa; }
+  .diff-tag { font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; flex-shrink:0; }
+  .diff-tag.on { background:#d1fae5; color:#059669; }
+  .diff-tag.new { background:#dbeafe; color:#2563eb; }
+  .diff-tag.off { background:#f3f4f6; color:#ccc; }
+
+  .addon-found { background:linear-gradient(135deg,#fce7f3,#ede9fe); border-radius:10px; padding:9px 12px; margin-top:12px; font-size:12px; color:#7c6f8e; }
+  .confirm-btn { width:100%; padding:12px; border-radius:12px; border:none; margin-top:14px; background:linear-gradient(135deg,#a7f3d0,#6ee7b7); color:#065f46; font-size:13px; font-weight:700; cursor:pointer; }
+
+  /* ── SCREEN: SUMMARY ── */
+  .summary-layout { display:grid; grid-template-columns:1fr 260px; gap:14px; }
+  .summary-total-card { background:linear-gradient(135deg,#f9a8d4 0%,#c084fc 50%,#93c5fd 100%); border-radius:14px; padding:18px; color:#fff; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; }
+  .total-amount { font-size:26px; font-weight:800; letter-spacing:-1px; }
+  .total-label { font-size:12px; opacity:0.85; margin-bottom:3px; }
+  .total-count { font-size:11px; opacity:0.7; }
+  .summary-row { display:flex; align-items:center; padding:10px 12px; border-radius:11px; background:#fff; margin-bottom:7px; box-shadow:0 1px 4px rgba(180,140,220,0.07); gap:10px; }
+  .sdot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .sname { flex:1; font-size:13px; font-weight:600; }
+  .swho { font-size:11px; color:#aaa; }
+  .samt { font-size:13px; font-weight:700; color:#ec4899; }
+  .zalo-box { background:#1e1e2e; border-radius:12px; padding:13px; font-family:monospace; font-size:12px; color:#a0e0a0; line-height:1.8; margin-bottom:10px; }
+  .copy-btn { width:100%; padding:11px; border-radius:12px; border:none; background:linear-gradient(135deg,#a7f3d0,#6ee7b7); color:#065f46; font-size:13px; font-weight:700; cursor:pointer; }
+
+  /* ── SCREEN: DEBT ── */
+  .week-nav { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .week-arrow { font-size:18px; color:#c084fc; cursor:pointer; font-weight:700; }
+  .week-title { font-size:14px; font-weight:700; }
+  .week-sub { font-size:12px; color:#aaa; margin-left:3px; }
+  .debt-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  .debt-card { background:#fff; border-radius:14px; padding:14px; box-shadow:0 2px 8px rgba(180,140,220,0.08); border:1.5px solid transparent; position:relative; overflow:hidden; }
+  .debt-card.paid { border-color:#a7f3d0; }
+  .debt-card.unpaid { border-color:#fca5a5; }
+  .dcname { font-size:14px; font-weight:700; margin-bottom:3px; }
+  .dcamt { font-size:21px; font-weight:800; margin-bottom:7px; }
+  .debt-card.paid .dcamt { color:#059669; }
+  .debt-card.unpaid .dcamt { color:#e11d48; }
+  .dtag { display:inline-block; padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; margin-bottom:9px; }
+  .dtag.paid { background:#d1fae5; color:#059669; }
+  .dtag.unpaid { background:#fce7f3; color:#e11d48; }
+  .dsource { font-size:10px; color:#bbb; }
+  .dpay-btn { width:100%; padding:8px; border-radius:9px; border:none; background:linear-gradient(135deg,#93c5fd,#818cf8); color:#fff; font-size:11px; font-weight:700; cursor:pointer; margin-top:7px; }
+  .dnote { font-size:10px; color:#bbb; font-family:monospace; margin-top:5px; text-align:center; }
+  .dbg { position:absolute; right:8px; top:8px; font-size:36px; opacity:0.06; }
+
+  /* screen visibility */
+  .screen-full { display:none; flex-direction:column; height:100%; }
+  .screen-full.visible { display:flex; }
+</style>
+</head>
+<body>
+
+<div class="page-meta">
+  <h1>🍱 LunchTime v2 — 3 improvements</h1>
+  <p>① Tên nhanh hơn · ② Add-on inline · ③ Import gọn hơn</p>
+</div>
+
+<div class="screen-tabs">
+  <div class="stab active" onclick="show('order',this)">🍱 Order</div>
+  <div class="stab" onclick="show('import',this)">📥 Import Menu</div>
+  <div class="stab" onclick="show('summary',this)">📋 Tổng hợp</div>
+  <div class="stab" onclick="show('debt',this)">💰 Công nợ</div>
+</div>
+
+<div class="app-shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">🍱 LunchTime</div>
+    <div class="nav-item active"><div class="nav-icon">🍱</div> Order hôm nay</div>
+    <div class="nav-item"><div class="nav-icon">📥</div> Import menu</div>
+    <div class="nav-item"><div class="nav-icon">📋</div> Tổng hợp đơn</div>
+    <div class="nav-item"><div class="nav-icon">💰</div> Công nợ</div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-item"><div class="nav-icon">📊</div> Lịch sử</div>
+    <div class="sidebar-bottom">
+      <div class="week-badge"><strong>Tuần 17</strong>21/04 – 25/04</div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- ORDER -->
+    <div id="screen-order" class="screen-full visible">
+      <div class="topbar">
+        <div><h2>Order hôm nay</h2><span>Thứ Hai, 21/04/2026 · 6 người</span></div>
+        <div class="topbar-right">
+          <div class="badge badge-timer">⏳ Còn 1 giờ 23 phút</div>
+          <button class="btn btn-danger">🔒 Chốt đơn</button>
+        </div>
+      </div>
+      <div class="content-body">
+        <div class="order-layout">
+          <div>
+            <!-- ① Name quick-select -->
+            <div class="panel" style="margin-bottom:12px;">
+              <div class="name-label">Bạn là ai?</div>
+              <div class="name-chips">
+                <div class="name-chip">An</div>
+                <div class="name-chip">Bình</div>
+                <div class="name-chip selected">Chi</div>
+                <div class="name-chip">Dũng</div>
+                <div class="name-chip">Em</div>
+                <div class="name-chip">Phong</div>
+                <div class="name-chip new">+ Tên mới</div>
+              </div>
+            </div>
+
+            <!-- Menu -->
+            <div class="panel">
+              <div class="panel-title">Menu hôm nay</div>
+              <div class="cat-pills">
+                <div class="cat-pill active">🍚 Cơm</div>
+                <div class="cat-pill">🍜 Bún</div>
+                <div class="cat-pill">🍝 Mì / Nui</div>
+              </div>
+              <div class="menu-list">
+                <div class="menu-row">
+                  <div class="check-circle"></div>
+                  <div class="menu-name">Thịt kho đậu hũ</div>
+                  <div class="menu-price">30,000đ</div>
+                </div>
+                <div class="menu-row">
+                  <div class="check-circle"></div>
+                  <div class="menu-name">Hến xào sả ớt</div>
+                  <div class="menu-price">30,000đ</div>
+                </div>
+                <div class="menu-row selected">
+                  <div class="check-circle checked">✓</div>
+                  <div class="menu-name">Cơm gà mắm tỏi</div>
+                  <div class="menu-price sel">35,000đ</div>
+                </div>
+                <!-- ② Add-on widget inline, chỉ show khi món có add-on được chọn -->
+                <div class="menu-row" style="background:transparent;border:none;padding:0;cursor:default;">
+                  <div class="addon-widget" style="flex:1;">
+                    <div class="addon-widget-title">➕ Gọi thêm</div>
+                    <div class="addon-chips">
+                      <div class="addon-chip on">✓ Chả +5k</div>
+                      <div class="addon-chip">Bì +5k</div>
+                      <div class="addon-chip">Ốp la +5k</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="menu-row">
+                  <div class="check-circle"></div>
+                  <div class="menu-name">Cơm sườn</div>
+                  <div class="menu-price">30,000đ</div>
+                </div>
+                <div class="menu-row">
+                  <div class="check-circle"></div>
+                  <div class="menu-name">Cơm heo quay</div>
+                  <div class="menu-price">35,000đ</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right -->
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="panel">
+              <div class="panel-title">Order của bạn</div>
+              <div class="my-order-box">
+                <div class="my-order-label">Đang chọn</div>
+                <div class="my-order-item">Cơm gà mắm tỏi</div>
+                <div class="my-order-addon">+ Chả</div>
+                <div class="my-order-price">40,000đ</div>
+                <button class="cta-btn">Xác nhận order ✓</button>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">Đã order (4/6)</div>
+              <div class="who-grid">
+                <div class="who-chip done">An ✓</div>
+                <div class="who-chip done">Bình ✓</div>
+                <div class="who-chip done">Chi ✓</div>
+                <div class="who-chip done">Dũng ✓</div>
+                <div class="who-chip waiting">Em…</div>
+                <div class="who-chip waiting">Phong…</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT -->
+    <div id="screen-import" class="screen-full">
+      <div class="topbar">
+        <div><h2>Import Menu</h2><span>Dán menu từ Zalo — app tự parse và cập nhật</span></div>
+      </div>
+      <div class="content-body">
+        <div class="import-layout">
+          <div>
+            <div class="panel-title" style="margin-bottom:8px;">Paste menu Zalo</div>
+            <textarea class="import-textarea">@All
+- Thịt kho đậu hũ 30k
+- Hến xào sả ớt 30k
+- Chả cá sốt cà 30k
+- Cơm gà mắm tỏi: 35k
+- Cơm sườn: 30k
++ bì || chả || ốp la: 5k/phần
+- Nui xào bò trứng: 40k
+Gọi thêm:
+- Sườn thêm: 25k
+- Ốp la thêm: 5k
+Kính mời 🤤🤤🤤</textarea>
+            <button class="parse-btn">🔍 Phân tích menu</button>
+          </div>
+
+          <!-- ③ Simplified result: clean diff list -->
+          <div class="parse-result">
+            <div class="parse-result-title">Thay đổi hôm nay</div>
+
+            <div class="diff-row">
+              <div class="diff-dot new"></div>
+              <div class="diff-name">Hến xào sả ớt</div>
+              <div class="diff-price">30k</div>
+              <div class="diff-tag new">Mới</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot on"></div>
+              <div class="diff-name">Thịt kho đậu hũ</div>
+              <div class="diff-price">30k</div>
+              <div class="diff-tag on">Có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot on"></div>
+              <div class="diff-name">Cơm gà mắm tỏi</div>
+              <div class="diff-price">35k</div>
+              <div class="diff-tag on">Có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot on"></div>
+              <div class="diff-name">Cơm sườn</div>
+              <div class="diff-price">30k</div>
+              <div class="diff-tag on">Có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot on"></div>
+              <div class="diff-name">Nui xào bò trứng</div>
+              <div class="diff-price">40k</div>
+              <div class="diff-tag on">Có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot off"></div>
+              <div class="diff-name off">Cá hú kho</div>
+              <div class="diff-price">30k</div>
+              <div class="diff-tag off">Hôm nay không có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot off"></div>
+              <div class="diff-name off">Mì trộn gà trứng</div>
+              <div class="diff-price">40k</div>
+              <div class="diff-tag off">Hôm nay không có</div>
+            </div>
+            <div class="diff-row">
+              <div class="diff-dot off"></div>
+              <div class="diff-name off" style="color:#e0d6f0;">+11 món khác...</div>
+              <div class="diff-price"></div>
+              <div class="diff-tag off">Hôm nay không có</div>
+            </div>
+
+            <div class="addon-found">✨ Add-on: <strong>bì / chả / ốp la — 5k/phần</strong></div>
+            <button class="confirm-btn">✓ Xác nhận — Mở order hôm nay</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <div id="screen-summary" class="screen-full">
+      <div class="topbar">
+        <div><h2>Tổng hợp đơn</h2><span>Thứ Hai, 21/04 · 6/6 đã order</span></div>
+        <div class="topbar-right">
+          <button class="btn btn-outline">✏️ Sửa đơn</button>
+          <button class="btn btn-danger">🔒 Chốt đơn</button>
+        </div>
+      </div>
+      <div class="content-body">
+        <div class="summary-layout">
+          <div>
+            <div class="summary-total-card">
+              <div><div class="total-label">Tổng hôm nay</div><div class="total-amount">220,000đ</div><div class="total-count">6 người · 5 món</div></div>
+              <div style="font-size:48px;opacity:0.2;">💰</div>
+            </div>
+            <div class="summary-row"><div class="sdot" style="background:#f472b6;"></div><div class="sname">Cơm gà mắm tỏi</div><div class="swho">An, Bình · ×2</div><div class="samt">70k</div></div>
+            <div class="summary-row"><div class="sdot" style="background:#c084fc;"></div><div class="sname">Cơm sườn + chả</div><div class="swho">Chi, Dũng · ×2</div><div class="samt">70k</div></div>
+            <div class="summary-row"><div class="sdot" style="background:#93c5fd;"></div><div class="sname">Bún thịt nướng ĐĐ</div><div class="swho">Em · ×1</div><div class="samt">40k</div></div>
+            <div class="summary-row"><div class="sdot" style="background:#6ee7b7;"></div><div class="sname">Mì trộn heo quay ốp la</div><div class="swho">Phong · ×1</div><div class="samt">40k</div></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div class="panel">
+              <div class="panel-title">Text gửi Zalo</div>
+              <div class="zalo-box">📋 ORDER 21/04<br>- Cơm gà: An, Bình (×2)<br>- Cơm sườn+chả: Chi, Dũng (×2)<br>- Bún TN ĐĐ: Em<br>- Mì trộn HQ ốp la: Phong<br>💰 Tổng: 220k</div>
+              <button class="copy-btn">📋 Copy gửi Zalo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DEBT -->
+    <div id="screen-debt" class="screen-full">
+      <div class="topbar">
+        <div><h2>Công nợ</h2><span>SePay tự động xác nhận khi nhận tiền</span></div>
+        <div class="topbar-right"><div class="badge" style="background:#d1fae5;color:#059669;">Đã thu: 290k / 750k</div></div>
+      </div>
+      <div class="content-body">
+        <div class="week-nav">
+          <div class="week-arrow">‹</div>
+          <div><span class="week-title">Tuần 17</span><span class="week-sub">21/04 – 25/04</span></div>
+          <div class="week-arrow">›</div>
+        </div>
+        <div class="debt-grid">
+          <div class="debt-card paid"><div class="dbg">✓</div><div class="dcname">An</div><div class="dcamt">150,000đ</div><div class="dtag paid">✓ Đã trả</div><div class="dsource">SePay · T2 10:45</div></div>
+          <div class="debt-card paid"><div class="dbg">✓</div><div class="dcname">Bình</div><div class="dcamt">140,000đ</div><div class="dtag paid">✓ Đã trả</div><div class="dsource">SePay · T3 09:12</div></div>
+          <div class="debt-card unpaid"><div class="dbg">💸</div><div class="dcname">Chi</div><div class="dcamt">160,000đ</div><div class="dtag unpaid">⏳ Chưa trả</div><button class="dpay-btn">📱 Mở app ngân hàng</button><div class="dnote">Lunch Tuan 17 Chi · 160k</div></div>
+          <div class="debt-card unpaid"><div class="dbg">💸</div><div class="dcname">Dũng</div><div class="dcamt">175,000đ</div><div class="dtag unpaid">⏳ Chưa trả</div><button class="dpay-btn">📱 Mở app ngân hàng</button><div class="dnote">Lunch Tuan 17 Dung · 175k</div></div>
+          <div class="debt-card unpaid"><div class="dbg">💸</div><div class="dcname">Em</div><div class="dcamt">85,000đ</div><div class="dtag unpaid">⏳ Chưa trả</div><button class="dpay-btn">📱 Mở app ngân hàng</button><div class="dnote">Lunch Tuan 17 Em · 85k</div></div>
+          <div class="debt-card paid"><div class="dbg">✓</div><div class="dcname">Phong</div><div class="dcamt">140,000đ</div><div class="dtag paid">✓ Đã trả</div><div class="dsource">SePay · T2 11:30</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function show(name, tabEl) {
+  document.querySelectorAll('.screen-full').forEach(s => s.classList.remove('visible'));
+  document.getElementById('screen-' + name).classList.add('visible');
+  document.querySelectorAll('.stab').forEach(t => t.classList.remove('active'));
+  if (tabEl) tabEl.classList.add('active');
+}
+</script>
+</body>
+</html>

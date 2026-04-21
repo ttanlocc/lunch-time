@@ -1,0 +1,94 @@
+<h2>📋 Menu Import — Paste & Parse</h2>
+<p class="subtitle">Dán text Zalo vào → app tự detect món mới / món bỏ / giá thay đổi</p>
+
+<div class="split">
+
+  <!-- Left: Import UI -->
+  <div class="mockup">
+    <div class="mockup-header">Màn hình Import Menu</div>
+    <div class="mockup-body" style="font-size:12px;padding:12px;">
+
+      <div style="font-size:11px;color:#999;margin-bottom:6px;">Dán menu từ Zalo vào đây:</div>
+      <textarea style="width:100%;height:120px;box-sizing:border-box;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:11px;font-family:monospace;resize:none;background:#fafafa;color:#333;">@All
+- Thịt kho đậu hũ 30k
+- Hến xào sả ớt 30k
+- Cơm gà mắm tỏi: 35k
+- Cơm sườn: 30k
++ bì || chả || ốp la: 5k/phần
+Gọi thêm:
+- Sườn thêm: 25k
+- Ốp la thêm: 5k</textarea>
+
+      <div class="mock-button" style="background:#1565c0;color:white;text-align:center;margin-top:8px;font-size:12px;">
+        🔍 Phân tích menu
+      </div>
+
+      <!-- Parse result preview -->
+      <div style="margin-top:12px;border:1px solid #e3f2fd;border-radius:6px;overflow:hidden;">
+        <div style="background:#e3f2fd;padding:6px 10px;font-size:11px;font-weight:600;color:#1565c0;">Kết quả phân tích</div>
+
+        <div style="padding:8px 10px;">
+          <div style="font-size:11px;color:#2e7d32;margin-bottom:4px;font-weight:600;">✅ Có sẵn trong DB — bật lại hôm nay (3)</div>
+          <div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:11px;">Thịt kho đậu hũ — 30k</div>
+          <div style="padding:4px 0;border-bottom:1px solid #f0f0f0;font-size:11px;">Cơm gà mắm tỏi — 35k</div>
+          <div style="padding:4px 0;font-size:11px;">Cơm sườn — 30k  <span style="color:#ff8f00;font-size:10px;">+ add-ons: bì/chả/ốp la</span></div>
+        </div>
+
+        <div style="padding:8px 10px;border-top:1px solid #e3f2fd;">
+          <div style="font-size:11px;color:#1565c0;margin-bottom:4px;font-weight:600;">🆕 Món mới — thêm vào DB (1)</div>
+          <div style="padding:4px 0;font-size:11px;">Hến xào sả ớt — 30k</div>
+        </div>
+
+        <div style="padding:8px 10px;border-top:1px solid #e3f2fd;">
+          <div style="font-size:11px;color:#999;margin-bottom:4px;font-weight:600;">❌ Không có hôm nay — tắt (14 món)</div>
+          <div style="font-size:11px;color:#bbb;">Chả cá sốt cà, Cá hú kho, Nui xào bò...</div>
+        </div>
+      </div>
+
+      <div class="mock-button" style="background:#2e7d32;color:white;text-align:center;margin-top:8px;font-size:12px;">
+        ✓ Xác nhận — Mở order hôm nay
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Parser logic explained -->
+  <div class="mockup">
+    <div class="mockup-header">Logic parse tự động</div>
+    <div class="mockup-body" style="font-size:12px;padding:12px;">
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:#333;margin-bottom:6px;">Pattern nhận diện:</div>
+        <div style="background:#f5f5f5;border-radius:6px;padding:8px;font-family:monospace;font-size:11px;color:#555;">
+          <div style="margin-bottom:4px;"><span style="color:#c62828;">-</span> Tên món [:]? giá<span style="color:#c62828;">k</span></div>
+          <div style="margin-bottom:4px;"><span style="color:#1565c0;">+</span> addon1 <span style="color:#999;">||</span> addon2: giá<span style="color:#c62828;">k</span></div>
+          <div>Section: <span style="color:#e65100;">"Gọi thêm:"</span></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:#333;margin-bottom:6px;">Xử lý giá thay đổi:</div>
+        <div style="background:#fff3e0;border-radius:6px;padding:8px;font-size:11px;">
+          <div>Cơm sườn lần trước: <span style="text-decoration:line-through;color:#999;">35k</span></div>
+          <div>Hôm nay: <strong style="color:#e65100;">30k</strong> → tự cập nhật giá</div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px;">
+        <div style="font-size:11px;font-weight:600;color:#333;margin-bottom:6px;">Fuzzy match tên món:</div>
+        <div style="background:#f5f5f5;border-radius:6px;padding:8px;font-size:11px;">
+          <div>"Cơm gà mắm tỏi" ≈ "Cơm gà mắm tỏi:" ✓</div>
+          <div style="margin-top:4px;color:#999;">Bỏ qua dấu câu, khoảng trắng thừa</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:600;color:#333;margin-bottom:6px;">Idempotent — paste lại không sao:</div>
+        <div style="background:#e8f5e9;border-radius:6px;padding:8px;font-size:11px;color:#2e7d32;">
+          Paste 2 lần cùng menu → kết quả giống hệt lần 1. Không tạo duplicate.
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>

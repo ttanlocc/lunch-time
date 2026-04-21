@@ -1,0 +1,126 @@
+<h2>🍱 Order Screen — Menu thực tế</h2>
+<p class="subtitle">18+ món + add-ons. Chọn layout bạn thích hơn.</p>
+
+<div class="split">
+
+  <!-- Option A: Category tabs -->
+  <div class="mockup">
+    <div class="mockup-header">Option A — Category tabs</div>
+    <div class="mockup-body" style="font-size:12px;padding:0;">
+
+      <div style="padding:10px 12px;background:#f9f9f9;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+        <strong style="font-size:13px;">Thứ Hai 21/04</strong>
+        <span style="background:#fff3e0;color:#e65100;font-size:11px;padding:2px 8px;border-radius:10px;">⏳ 1h 23p</span>
+      </div>
+
+      <div style="padding:8px 12px;">
+        <input class="mock-input" placeholder="Tên của bạn..." style="font-size:12px;width:100%;box-sizing:border-box;"/>
+      </div>
+
+      <!-- Category tabs -->
+      <div style="display:flex;border-bottom:1px solid #eee;overflow-x:auto;background:#fff;padding:0 8px;">
+        <div style="padding:7px 10px;white-space:nowrap;border-bottom:2px solid #2e7d32;color:#2e7d32;font-weight:600;font-size:11px;">Cơm</div>
+        <div style="padding:7px 10px;white-space:nowrap;color:#999;font-size:11px;">Bún</div>
+        <div style="padding:7px 10px;white-space:nowrap;color:#999;font-size:11px;">Mì / Nui</div>
+        <div style="padding:7px 10px;white-space:nowrap;color:#999;font-size:11px;">Gọi thêm</div>
+      </div>
+
+      <!-- Cơm items -->
+      <div style="padding:8px 12px;overflow-y:auto;max-height:160px;">
+        <label style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Thịt kho đậu hũ</span><span style="color:#888">30k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;background-color:#f0faf0;">
+          <span style="color:#2e7d32">☑ Cơm gà mắm tỏi</span><span style="color:#2e7d32;font-weight:600">35k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Cơm sườn</span><span style="color:#888">30k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Cơm heo quay</span><span style="color:#888">35k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:6px 0;cursor:pointer;">
+          <span>Cơm bò xào trứng</span><span style="color:#888">40k</span>
+        </label>
+      </div>
+
+      <!-- Add-ons (shown when Cơm sườn selected) -->
+      <div style="background:#fff8e1;padding:8px 12px;border-top:1px solid #ffe082;font-size:11px;">
+        <div style="color:#e65100;font-weight:600;margin-bottom:5px;">+ Add-on cho Cơm sườn:</div>
+        <div style="display:flex;gap:8px;">
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><span>☐</span> Bì <span style="color:#888">+5k</span></label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><span>☐</span> Chả <span style="color:#888">+5k</span></label>
+          <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><span>☐</span> Ốp la <span style="color:#888">+5k</span></label>
+        </div>
+      </div>
+
+      <div style="padding:8px 12px;">
+        <div class="mock-button" style="background:#2e7d32;color:white;text-align:center;width:100%;box-sizing:border-box;font-size:12px;">Xác nhận — 35,000đ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Single scrollable list with sections -->
+  <div class="mockup">
+    <div class="mockup-header">Option B — Scrollable sections</div>
+    <div class="mockup-body" style="font-size:12px;padding:10px 12px;">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong>Thứ Hai 21/04</strong>
+        <span style="background:#fff3e0;color:#e65100;font-size:11px;padding:2px 8px;border-radius:10px;">⏳ 1h 23p</span>
+      </div>
+
+      <input class="mock-input" placeholder="Tên của bạn..." style="font-size:12px;width:100%;box-sizing:border-box;margin-bottom:8px;"/>
+
+      <div style="overflow-y:auto;max-height:220px;">
+        <!-- Cơm section -->
+        <div style="font-size:10px;text-transform:uppercase;color:#999;letter-spacing:1px;padding:4px 0;margin-top:4px;">🍚 Cơm</div>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Thịt kho đậu hũ</span><span style="color:#888">30k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;color:#2e7d32;font-weight:600;">
+          <span>☑ Cơm gà mắm tỏi</span><span>35k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Cơm sườn</span><span style="color:#888">30k</span>
+        </label>
+
+        <!-- Bún section -->
+        <div style="font-size:10px;text-transform:uppercase;color:#999;letter-spacing:1px;padding:4px 0;margin-top:6px;">🍜 Bún</div>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Bún thịt nướng</span><span style="color:#888">30k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Bún thịt nướng đầy đủ</span><span style="color:#888">40k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Bún heo quay</span><span style="color:#888">35k</span>
+        </label>
+
+        <!-- Mì/Nui section -->
+        <div style="font-size:10px;text-transform:uppercase;color:#999;letter-spacing:1px;padding:4px 0;margin-top:6px;">🍝 Mì / Nui</div>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Mì xào bò trứng</span><span style="color:#888">40k</span>
+        </label>
+        <label style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;">
+          <span>Mì trộn gà trứng</span><span style="color:#888">40k</span>
+        </label>
+      </div>
+
+      <!-- Add-on strip -->
+      <div style="background:#fff8e1;padding:6px 8px;border-radius:6px;margin-top:6px;font-size:11px;">
+        <span style="color:#e65100;">+ Add-on:</span>
+        <span style="margin-left:6px;">☐ Bì +5k</span>
+        <span style="margin-left:6px;">☐ Chả +5k</span>
+        <span style="margin-left:6px;">☐ Ốp la +5k</span>
+      </div>
+
+      <div class="mock-button" style="background:#2e7d32;color:white;text-align:center;margin-top:8px;font-size:12px;">Xác nhận — 35,000đ</div>
+    </div>
+  </div>
+
+</div>
+
+<div style="margin-top:16px;background:#e8f5e9;border-radius:8px;padding:12px;font-size:12px;">
+  <strong>📝 Note về data model:</strong> Menu seed sẵn trong DB. Mỗi ngày chỉ cần toggle ON/OFF — không phải gõ lại. Add-ons (bì/chả/ốp la) gắn với Cơm sườn như <em>modifier</em>.
+</div>

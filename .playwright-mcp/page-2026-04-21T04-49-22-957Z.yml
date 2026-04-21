@@ -1,0 +1,121 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]: 🍱 LunchTime
+    - button "🍱 Order hôm nay" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: 🍱
+      - text: Order hôm nay
+    - button "📥 Import menu" [ref=e8] [cursor=pointer]:
+      - generic [ref=e9]: 📥
+      - text: Import menu
+    - button "📋 Tổng hợp đơn" [ref=e10] [cursor=pointer]:
+      - generic [ref=e11]: 📋
+      - text: Tổng hợp đơn
+    - button "💰 Công nợ" [ref=e12] [cursor=pointer]:
+      - generic [ref=e13]: 💰
+      - text: Công nợ
+    - generic [ref=e14]:
+      - strong [ref=e15]: Tuần 20-04 – 24-04
+      - text: Tuần hiện tại
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: Order hôm nay
+          - generic [ref=e21]: Thứ Ba, 21/04/2026
+        - generic [ref=e22]:
+          - generic [ref=e23]: ⏳ Đang mở
+          - button "🔒 Chốt đơn" [ref=e24] [cursor=pointer]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: Bạn là ai?
+            - button "+ Tên mới" [ref=e30] [cursor=pointer]
+          - generic [ref=e31]:
+            - generic [ref=e32]: Menu hôm nay
+            - generic [ref=e33]:
+              - generic [ref=e34]: ➕ Gọi thêm
+              - generic [ref=e36] [cursor=pointer]:
+                - generic [ref=e38]: Bì thêm
+                - generic [ref=e39]: 5k
+              - generic [ref=e41] [cursor=pointer]:
+                - generic [ref=e43]: Chả giò thêm
+                - generic [ref=e44]: 7k
+              - generic [ref=e46] [cursor=pointer]:
+                - generic [ref=e48]: Gà thêm
+                - generic [ref=e49]: 30k
+              - generic [ref=e51] [cursor=pointer]:
+                - generic [ref=e53]: Heo quay thêm
+                - generic [ref=e54]: 30k
+              - generic [ref=e56] [cursor=pointer]:
+                - generic [ref=e58]: Nem thêm
+                - generic [ref=e59]: 10k
+              - generic [ref=e61] [cursor=pointer]:
+                - generic [ref=e63]: Sườn thêm
+                - generic [ref=e64]: 25k
+              - generic [ref=e66] [cursor=pointer]:
+                - generic [ref=e68]: Thịt nướng thêm
+                - generic [ref=e69]: 25k
+              - generic [ref=e71] [cursor=pointer]:
+                - generic [ref=e73]: Ốp la thêm
+                - generic [ref=e74]: 5k
+            - generic [ref=e75]:
+              - generic [ref=e76]: 🍚 Món chính
+              - generic [ref=e78] [cursor=pointer]:
+                - generic [ref=e80]: Bún heo quay
+                - generic [ref=e81]: 35k
+              - generic [ref=e83] [cursor=pointer]:
+                - generic [ref=e85]: Bún nem nướng
+                - generic [ref=e86]: 35k
+              - generic [ref=e88] [cursor=pointer]:
+                - generic [ref=e90]: Bún thịt nướng
+                - generic [ref=e91]: 30k
+              - generic [ref=e93] [cursor=pointer]:
+                - generic [ref=e95]: Bún thịt nướng đầy đủ
+                - generic [ref=e96]: 40k
+              - generic [ref=e98] [cursor=pointer]:
+                - generic [ref=e100]: Cá cơm kho tiêu
+                - generic [ref=e101]: 30k
+              - generic [ref=e103] [cursor=pointer]:
+                - generic [ref=e105]: Cơm bò xào trứng
+                - generic [ref=e106]: 40k
+              - generic [ref=e108] [cursor=pointer]:
+                - generic [ref=e110]: Cơm gà mắm tỏi
+                - generic [ref=e111]: 35k
+              - generic [ref=e113] [cursor=pointer]:
+                - generic [ref=e115]: Cơm heo quay
+                - generic [ref=e116]: 35k
+              - generic [ref=e118] [cursor=pointer]:
+                - generic [ref=e120]: Cơm sườn
+                - generic [ref=e121]: 30k
+              - generic [ref=e123] [cursor=pointer]:
+                - generic [ref=e125]: Gà kho sả ớt
+                - generic [ref=e126]: 30k
+              - generic [ref=e128] [cursor=pointer]:
+                - generic [ref=e130]: Mì trộn gà trứng
+                - generic [ref=e131]: 40k
+              - generic [ref=e133] [cursor=pointer]:
+                - generic [ref=e135]: Mì trộn heo quay ốp la
+                - generic [ref=e136]: 40k
+              - generic [ref=e138] [cursor=pointer]:
+                - generic [ref=e140]: Mì trộn nem nướng
+                - generic [ref=e141]: 35k
+              - generic [ref=e143] [cursor=pointer]:
+                - generic [ref=e145]: Mì xào bò trứng
+                - generic [ref=e146]: 40k
+              - generic [ref=e148] [cursor=pointer]:
+                - generic [ref=e150]: Nui xào bò trứng
+                - generic [ref=e151]: 40k
+              - generic [ref=e153] [cursor=pointer]:
+                - generic [ref=e155]: Thịt kho mắm ruốc
+                - generic [ref=e156]: 30k
+              - generic [ref=e158] [cursor=pointer]:
+                - generic [ref=e160]: Tôm rim thịt xay
+                - generic [ref=e161]: 30k
+        - generic [ref=e162]:
+          - generic [ref=e163]:
+            - generic [ref=e164]: Order của bạn
+            - generic [ref=e165]:
+              - generic [ref=e166]: ĐANG CHỌN
+              - generic [ref=e167]: Chưa chọn món
+              - button "Xác nhận order ✓" [disabled] [ref=e168]
+          - generic [ref=e170]: Đã order (0/?)

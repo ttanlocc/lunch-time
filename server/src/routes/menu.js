@@ -37,6 +37,24 @@ menuRouter.get('/today', (req, res) => {
   });
 });
 
+// POST /api/menu/preview
+menuRouter.post('/preview', (req, res) => {
+  const { text } = req.body;
+  if (!text) return res.status(400).json({ error: 'text required' });
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const { items } = parseMenuText(text);
+  const todayItems = db.prepare('SELECT mi.name, mi.normalized_name FROM daily_menu dm JOIN menu_items mi ON mi.id = dm.menu_item_id WHERE dm.date = ? AND dm.is_available = 1').all(today);
+  const todaySet = new Set(todayItems.map(r => r.normalized_name));
+  const incomingSet = new Set(items.map(i => i.normalizedName));
+  const result = {
+    new_items: items.filter(i => !db.prepare('SELECT id FROM menu_items WHERE normalized_name = ?').get(i.normalizedName)).map(i => i.name),
+    available: items.filter(i => db.prepare('SELECT id FROM menu_items WHERE normalized_name = ?').get(i.normalizedName)).map(i => i.name),
+    unavailable: todayItems.filter(r => !incomingSet.has(r.normalized_name)).map(r => r.name),
+  };
+  res.json(result);
+});
+
 // POST /api/menu/import
 menuRouter.post('/import', (req, res) => {
   const { text } = req.body;

@@ -1,0 +1,109 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]: 🍱 LunchTime
+    - button "🍱 Order hôm nay" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: 🍱
+      - text: Order hôm nay
+    - button "📥 Import menu" [active] [ref=e8] [cursor=pointer]:
+      - generic [ref=e9]: 📥
+      - text: Import menu
+    - button "📋 Tổng hợp đơn" [ref=e10] [cursor=pointer]:
+      - generic [ref=e11]: 📋
+      - text: Tổng hợp đơn
+    - button "💰 Công nợ" [ref=e12] [cursor=pointer]:
+      - generic [ref=e13]: 💰
+      - text: Công nợ
+    - generic [ref=e14]:
+      - strong [ref=e15]: Tuần 20-04 – 24-04
+      - text: Tuần hiện tại
+  - main [ref=e16]:
+    - generic [ref=e174]:
+      - generic [ref=e176]:
+        - generic [ref=e177]: Import Menu
+        - generic [ref=e178]: Dán menu từ Zalo — app tự parse và cập nhật
+      - generic [ref=e179]:
+        - generic [ref=e180]:
+          - generic [ref=e181]: Paste menu Zalo
+          - 'textbox "@All - Cơm gà mắm tỏi: 35k - Cơm sườn: 30k + bì || chả: 5k/phần ..." [ref=e182]':
+            - /placeholder: "@All\n- Cơm gà mắm tỏi: 35k\n- Cơm sườn: 30k\n+ bì || chả: 5k/phần\n..."
+            - text: "- Cơm gà mắm tỏi: 35k - Cơm sườn: 30k - Bún thịt nướng: 30k"
+          - button "🔍 Phân tích menu" [ref=e183] [cursor=pointer]
+        - generic [ref=e184]:
+          - generic [ref=e185]: Thay đổi hôm nay
+          - generic [ref=e187]:
+            - generic [ref=e188]:
+              - generic [ref=e190]: Cơm gà mắm tỏi
+              - generic [ref=e191]: Có
+            - generic [ref=e192]:
+              - generic [ref=e194]: Cơm sườn
+              - generic [ref=e195]: Có
+            - generic [ref=e196]:
+              - generic [ref=e198]: Bún thịt nướng
+              - generic [ref=e199]: Có
+            - generic [ref=e200]:
+              - generic [ref=e202]: Thịt kho mắm ruốc
+              - generic [ref=e203]: Không có
+            - generic [ref=e204]:
+              - generic [ref=e206]: Gà kho sả ớt
+              - generic [ref=e207]: Không có
+            - generic [ref=e208]:
+              - generic [ref=e210]: Tôm rim thịt xay
+              - generic [ref=e211]: Không có
+            - generic [ref=e212]:
+              - generic [ref=e214]: Cá cơm kho tiêu
+              - generic [ref=e215]: Không có
+            - generic [ref=e216]:
+              - generic [ref=e218]: Nui xào bò trứng
+              - generic [ref=e219]: Không có
+            - generic [ref=e220]:
+              - generic [ref=e222]: Mì xào bò trứng
+              - generic [ref=e223]: Không có
+            - generic [ref=e224]:
+              - generic [ref=e226]: Cơm bò xào trứng
+              - generic [ref=e227]: Không có
+            - generic [ref=e228]:
+              - generic [ref=e230]: Mì trộn gà trứng
+              - generic [ref=e231]: Không có
+            - generic [ref=e232]:
+              - generic [ref=e234]: Mì trộn heo quay ốp la
+              - generic [ref=e235]: Không có
+            - generic [ref=e236]:
+              - generic [ref=e238]: Mì trộn nem nướng
+              - generic [ref=e239]: Không có
+            - generic [ref=e240]:
+              - generic [ref=e242]: Bún thịt nướng đầy đủ
+              - generic [ref=e243]: Không có
+            - generic [ref=e244]:
+              - generic [ref=e246]: Bún nem nướng
+              - generic [ref=e247]: Không có
+            - generic [ref=e248]:
+              - generic [ref=e250]: Bún heo quay
+              - generic [ref=e251]: Không có
+            - generic [ref=e252]:
+              - generic [ref=e254]: Cơm heo quay
+              - generic [ref=e255]: Không có
+            - generic [ref=e256]:
+              - generic [ref=e258]: Sườn thêm
+              - generic [ref=e259]: Không có
+            - generic [ref=e260]:
+              - generic [ref=e262]: Chả giò thêm
+              - generic [ref=e263]: Không có
+            - generic [ref=e264]:
+              - generic [ref=e266]: Nem thêm
+              - generic [ref=e267]: Không có
+            - generic [ref=e268]:
+              - generic [ref=e270]: Thịt nướng thêm
+              - generic [ref=e271]: Không có
+            - generic [ref=e272]:
+              - generic [ref=e274]: Heo quay thêm
+              - generic [ref=e275]: Không có
+            - generic [ref=e276]:
+              - generic [ref=e278]: Gà thêm
+              - generic [ref=e279]: Không có
+            - generic [ref=e280]:
+              - generic [ref=e282]: Ốp la thêm
+              - generic [ref=e283]: Không có
+            - generic [ref=e284]:
+              - generic [ref=e286]: Bì thêm
+              - generic [ref=e287]: Không có
+          - generic [ref=e289]: ✓ Menu đã cập nhật — Order đang mở!

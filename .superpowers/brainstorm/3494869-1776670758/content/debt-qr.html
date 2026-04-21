@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debt QR</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Inter',sans-serif; background:#f0edf8; color:#2d2d3a; font-size:14px; }
+
+  .page-meta { text-align:center; padding:24px 0 14px; }
+  .page-meta h1 { font-size:18px; font-weight:700; }
+  .page-meta p { font-size:12px; color:#aaa; margin-top:3px; }
+
+  .app-shell { max-width:1100px; margin:0 auto 40px; padding:0 24px; display:flex; height:600px; background:#fff; border-radius:24px; box-shadow:0 8px 40px rgba(180,140,220,0.18); overflow:hidden; }
+
+  .sidebar { width:200px; flex-shrink:0; background:linear-gradient(180deg,#fce7f3,#ede9fe); padding:20px 14px; display:flex; flex-direction:column; gap:4px; border-right:1px solid rgba(255,255,255,0.6); }
+  .sidebar-logo { font-size:16px; font-weight:800; margin-bottom:18px; padding:0 4px; background:linear-gradient(135deg,#ec4899,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .nav-item { display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:11px; font-size:12px; font-weight:500; color:#7c6f8e; }
+  .nav-item.active { background:#fff; color:#ec4899; font-weight:700; box-shadow:0 2px 8px rgba(236,72,153,0.1); }
+  .nav-icon { font-size:15px; width:20px; text-align:center; }
+  .sidebar-divider { height:1px; background:rgba(180,160,220,0.2); margin:6px 0; }
+  .sidebar-bottom { margin-top:auto; }
+  .week-badge { background:rgba(255,255,255,0.7); border-radius:10px; padding:9px 11px; font-size:11px; color:#7c6f8e; }
+  .week-badge strong { display:block; color:#ec4899; font-size:12px; margin-bottom:2px; }
+
+  .main { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:14px 22px; border-bottom:1px solid #f5f0fb; background:#fff; }
+  .topbar h2 { font-size:15px; font-weight:700; }
+  .topbar span { font-size:11px; color:#aaa; }
+  .badge { padding:5px 13px; border-radius:20px; font-size:12px; font-weight:700; }
+  .content-body { flex:1; overflow-y:auto; padding:18px 22px; background:#fdf8ff; }
+
+  .week-nav { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .week-arrow { font-size:18px; color:#c084fc; cursor:pointer; font-weight:700; }
+  .week-title { font-size:14px; font-weight:700; }
+  .week-sub { font-size:12px; color:#aaa; margin-left:3px; }
+
+  /* Debt list layout */
+  .debt-list { display:flex; flex-direction:column; gap:10px; }
+  .debt-row {
+    background:#fff; border-radius:14px; padding:14px 16px;
+    box-shadow:0 2px 8px rgba(180,140,220,0.07);
+    border:1.5px solid transparent;
+    display:flex; align-items:center; gap:14px;
+  }
+  .debt-row.paid { border-color:#a7f3d0; }
+  .debt-row.unpaid { border-color:#f9a8d4; }
+
+  .avatar {
+    width:40px; height:40px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:16px; font-weight:800; color:#fff;
+  }
+  .avatar.paid { background:linear-gradient(135deg,#6ee7b7,#10b981); }
+  .avatar.unpaid { background:linear-gradient(135deg,#f9a8d4,#c084fc); }
+
+  .debt-info { flex:1; }
+  .debt-name { font-size:14px; font-weight:700; margin-bottom:3px; }
+  .debt-meta { font-size:11px; color:#aaa; }
+
+  .debt-amount { font-size:18px; font-weight:800; text-align:right; }
+  .debt-amount.paid { color:#059669; }
+  .debt-amount.unpaid { color:#ec4899; }
+
+  .dtag { display:inline-block; padding:3px 10px; border-radius:10px; font-size:10px; font-weight:700; margin-top:3px; }
+  .dtag.paid { background:#d1fae5; color:#059669; }
+  .dtag.unpaid { background:#fce7f3; color:#ec4899; }
+
+  .qr-btn {
+    padding:8px 16px; border-radius:10px; border:none;
+    background:linear-gradient(135deg,#93c5fd,#818cf8);
+    color:#fff; font-size:12px; font-weight:700; cursor:pointer;
+    white-space:nowrap; flex-shrink:0;
+  }
+
+  /* QR Modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(30,20,50,0.45);
+    display:flex; align-items:center; justify-content:center; z-index:100;
+    backdrop-filter:blur(3px);
+  }
+  .modal-overlay.hidden { display:none; }
+  .modal {
+    background:#fff; border-radius:24px; padding:28px;
+    box-shadow:0 20px 60px rgba(180,140,220,0.35);
+    width:340px; text-align:center; position:relative;
+  }
+  .modal-close {
+    position:absolute; top:14px; right:16px; font-size:20px;
+    cursor:pointer; color:#ccc; line-height:1;
+  }
+  .modal-close:hover { color:#aaa; }
+  .modal-title { font-size:16px; font-weight:800; margin-bottom:4px; }
+  .modal-sub { font-size:12px; color:#aaa; margin-bottom:18px; }
+
+  /* QR code placeholder — real one would be from SePay API */
+  .qr-frame {
+    width:200px; height:200px; margin:0 auto 16px;
+    border-radius:16px; overflow:hidden;
+    box-shadow:0 4px 16px rgba(180,140,220,0.2);
+    border:3px solid #f0edf8;
+    position:relative;
+  }
+  .qr-frame img { width:100%; height:100%; object-fit:cover; }
+
+  /* Fake QR grid for mockup */
+  .qr-grid {
+    width:200px; height:200px; margin:0 auto 16px;
+    background:#fff; border-radius:16px;
+    border:3px solid #ede9fe;
+    display:grid; grid-template-columns:repeat(21,1fr);
+    gap:1px; padding:12px;
+    box-shadow:0 4px 16px rgba(180,140,220,0.15);
+  }
+  .qr-cell { border-radius:1px; }
+
+  .modal-amount { font-size:28px; font-weight:800; color:#ec4899; margin-bottom:6px; }
+  .modal-name { font-size:14px; font-weight:700; color:#2d2d3a; margin-bottom:4px; }
+  .modal-note {
+    display:inline-block; background:#f5f0fb; border-radius:8px;
+    padding:6px 14px; font-size:12px; font-family:monospace;
+    color:#7c6f8e; margin-bottom:16px; font-weight:600;
+  }
+  .modal-hint { font-size:11px; color:#bbb; line-height:1.5; }
+  .modal-hint strong { color:#a855f7; }
+  .sepay-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    background:linear-gradient(135deg,#fce7f3,#ede9fe);
+    border-radius:20px; padding:5px 14px; font-size:11px;
+    font-weight:700; color:#a855f7; margin-top:12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-meta">
+  <h1>💰 Công nợ — SePay QR</h1>
+  <p>Click "Hiện QR" để xem modal thanh toán</p>
+</div>
+
+<div class="app-shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-logo">🍱 LunchTime</div>
+    <div class="nav-item"><div class="nav-icon">🍱</div> Order hôm nay</div>
+    <div class="nav-item"><div class="nav-icon">📥</div> Import menu</div>
+    <div class="nav-item"><div class="nav-icon">📋</div> Tổng hợp đơn</div>
+    <div class="nav-item active"><div class="nav-icon">💰</div> Công nợ</div>
+    <div class="sidebar-divider"></div>
+    <div class="nav-item"><div class="nav-icon">📊</div> Lịch sử</div>
+    <div class="sidebar-bottom">
+      <div class="week-badge"><strong>Tuần 17</strong>21/04 – 25/04</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div><h2>Công nợ</h2><span>SePay tự xác nhận khi nhận đúng nội dung</span></div>
+      <div><div class="badge" style="background:#d1fae5;color:#059669;">Đã thu: 290k / 750k</div></div>
+    </div>
+    <div class="content-body">
+      <div class="week-nav">
+        <div class="week-arrow">‹</div>
+        <div><span class="week-title">Tuần 17</span><span class="week-sub">21/04 – 25/04</span></div>
+        <div class="week-arrow">›</div>
+      </div>
+
+      <div class="debt-list">
+        <div class="debt-row paid">
+          <div class="avatar paid">A</div>
+          <div class="debt-info">
+            <div class="debt-name">An</div>
+            <div class="debt-meta">SePay · T2 21/04 lúc 10:45</div>
+            <div class="dtag paid">✓ Đã trả</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="debt-amount paid">150,000đ</div>
+          </div>
+        </div>
+
+        <div class="debt-row paid">
+          <div class="avatar paid">B</div>
+          <div class="debt-info">
+            <div class="debt-name">Bình</div>
+            <div class="debt-meta">SePay · T3 22/04 lúc 09:12</div>
+            <div class="dtag paid">✓ Đã trả</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="debt-amount paid">140,000đ</div>
+          </div>
+        </div>
+
+        <div class="debt-row unpaid">
+          <div class="avatar unpaid">C</div>
+          <div class="debt-info">
+            <div class="debt-name">Chi</div>
+            <div class="debt-meta">Chưa thanh toán · Tuần 17</div>
+            <div class="dtag unpaid">⏳ Chưa trả</div>
+          </div>
+          <div style="text-align:right; display:flex; align-items:center; gap:12px;">
+            <div class="debt-amount unpaid">160,000đ</div>
+            <button class="qr-btn" onclick="openQR('Chi','160,000đ','Lunch Tuan 17 Chi')">📲 Hiện QR</button>
+          </div>
+        </div>
+
+        <div class="debt-row unpaid">
+          <div class="avatar unpaid">D</div>
+          <div class="debt-info">
+            <div class="debt-name">Dũng</div>
+            <div class="debt-meta">Chưa thanh toán · Tuần 17</div>
+            <div class="dtag unpaid">⏳ Chưa trả</div>
+          </div>
+          <div style="text-align:right; display:flex; align-items:center; gap:12px;">
+            <div class="debt-amount unpaid">175,000đ</div>
+            <button class="qr-btn" onclick="openQR('Dũng','175,000đ','Lunch Tuan 17 Dung')">📲 Hiện QR</button>
+          </div>
+        </div>
+
+        <div class="debt-row unpaid">
+          <div class="avatar unpaid">E</div>
+          <div class="debt-info">
+            <div class="debt-name">Em</div>
+            <div class="debt-meta">Chưa thanh toán · Tuần 17</div>
+            <div class="dtag unpaid">⏳ Chưa trả</div>
+          </div>
+          <div style="text-align:right; display:flex; align-items:center; gap:12px;">
+            <div class="debt-amount unpaid">85,000đ</div>
+            <button class="qr-btn" onclick="openQR('Em','85,000đ','Lunch Tuan 17 Em')">📲 Hiện QR</button>
+          </div>
+        </div>
+
+        <div class="debt-row paid">
+          <div class="avatar paid">P</div>
+          <div class="debt-info">
+            <div class="debt-name">Phong</div>
+            <div class="debt-meta">SePay · T2 21/04 lúc 11:30</div>
+            <div class="dtag paid">✓ Đã trả</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="debt-amount paid">140,000đ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- QR Modal -->
+<div id="modal" class="modal-overlay hidden" onclick="closeQR(event)">
+  <div class="modal">
+    <div class="modal-close" onclick="document.getElementById('modal').classList.add('hidden')">✕</div>
+    <div class="modal-title" id="modal-name">Chi</div>
+    <div class="modal-sub">Quét QR để chuyển khoản</div>
+
+    <!-- SePay QR — production dùng: https://qr.sepay.vn/img?... -->
+    <img id="qr-img" src="" style="width:200px;height:200px;border-radius:16px;border:3px solid #ede9fe;display:block;margin:0 auto 16px;box-shadow:0 4px 16px rgba(180,140,220,0.15);" alt="QR">
+
+    <div class="modal-amount" id="modal-amount">160,000đ</div>
+    <div class="modal-note" id="modal-note">Lunch Tuan 17 Chi</div>
+    <div class="modal-hint">
+      Mở app ngân hàng → quét QR<br>
+      Số tiền & nội dung điền <strong>tự động</strong><br>
+      <strong>SePay</strong> tự xác nhận sau khi nhận tiền
+    </div>
+    <div class="sepay-badge">⚡ Powered by SePay</div>
+  </div>
+</div>
+
+<script>
+function openQR(name, amount, note) {
+  document.getElementById('modal-name').textContent = name;
+  document.getElementById('modal-amount').textContent = amount;
+  document.getElementById('modal-note').textContent = note;
+
+  // SePay QR API — thay BANK/ACCOUNT bằng thông tin thực
+  // Dùng VietQR standard: https://img.vietqr.io/image/{BANK}-{ACCOUNT}-{TEMPLATE}.png?amount={AMOUNT}&addInfo={INFO}&accountName={NAME}
+  const amountNum = amount.replace(/[^0-9]/g, '');
+  const qrUrl = `https://img.vietqr.io/image/MB-123456789-compact2.png?amount=${amountNum}&addInfo=${encodeURIComponent(note)}&accountName=LUNCH%20TEAM`;
+  document.getElementById('qr-img').src = qrUrl;
+
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeQR(e) {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.add('hidden');
+  }
+}
+</script>
+</body>
+</html>

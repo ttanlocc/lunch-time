@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lunch App — UI Polish</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a1a; }
+
+  .page-title { text-align:center; padding: 20px; font-size: 18px; font-weight: 700; color: #333; }
+  .page-title span { font-size: 13px; color: #888; display:block; font-weight:400; margin-top:2px; }
+
+  .screens { display: flex; gap: 20px; padding: 0 20px 30px; justify-content: center; flex-wrap: wrap; }
+
+  /* Phone frame */
+  .phone {
+    width: 280px; flex-shrink: 0;
+    background: #fff; border-radius: 36px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15), 0 0 0 8px #1a1a1a, 0 0 0 10px #333;
+    overflow: hidden; position: relative;
+  }
+  .phone-notch {
+    background: #1a1a1a; height: 28px; display:flex; align-items:center; justify-content:center;
+  }
+  .phone-notch-pill { background: #000; width: 80px; height: 18px; border-radius: 12px; }
+  .phone-screen { overflow: hidden; }
+
+  /* App shell */
+  .app-header {
+    background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+    padding: 14px 16px 12px;
+    color: white;
+  }
+  .app-header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .app-logo { font-size: 16px; font-weight: 800; letter-spacing: -0.5px; }
+  .app-date { font-size: 11px; opacity: 0.85; }
+  .timer-badge {
+    background: rgba(255,255,255,0.25); backdrop-filter: blur(4px);
+    border-radius: 20px; padding: 4px 10px; font-size: 11px; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    padding: 0 4px;
+  }
+  .tab {
+    flex: 1; padding: 9px 4px 7px; text-align: center; font-size: 10px;
+    color: #bbb; cursor: pointer; border-bottom: 2px solid transparent;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .tab.active { color: #ff6b35; border-bottom-color: #ff6b35; }
+  .tab-icon { font-size: 16px; line-height: 1; }
+
+  /* Content */
+  .screen-body { padding: 12px; background: #f8f9fa; min-height: 420px; }
+
+  /* Order screen */
+  .name-input {
+    background: #fff; border: 1.5px solid #e8e8e8; border-radius: 12px;
+    padding: 10px 14px; font-size: 13px; width: 100%; margin-bottom: 12px;
+    color: #333; outline: none;
+  }
+  .section-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    color: #aaa; margin-bottom: 6px; padding-left: 2px;
+  }
+  .menu-card {
+    background: #fff; border-radius: 14px; overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); margin-bottom: 10px;
+  }
+  .menu-item {
+    display: flex; align-items: center; padding: 10px 12px;
+    border-bottom: 1px solid #f5f5f5; gap: 10px; cursor: pointer;
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item.selected { background: #fff8f5; }
+  .item-check {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid #ddd; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .item-check.checked { background: #ff6b35; border-color: #ff6b35; color: white; font-size: 11px; }
+  .item-name { flex: 1; font-size: 12px; font-weight: 500; }
+  .item-price { font-size: 12px; color: #888; font-weight: 500; }
+  .item-price.selected-price { color: #ff6b35; font-weight: 700; }
+
+  /* Add-on strip */
+  .addon-strip {
+    background: #fff9f5; border: 1px solid #ffe4d0; border-radius: 12px;
+    padding: 8px 12px; margin-bottom: 10px;
+  }
+  .addon-label { font-size: 10px; color: #ff6b35; font-weight: 700; margin-bottom: 5px; }
+  .addon-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .addon-chip {
+    border: 1.5px solid #ddd; border-radius: 20px; padding: 4px 10px;
+    font-size: 11px; color: #666; cursor: pointer; background: #fff;
+  }
+  .addon-chip.selected { border-color: #ff6b35; background: #fff3ed; color: #ff6b35; font-weight: 600; }
+
+  /* CTA button */
+  .cta-btn {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    color: white; border-radius: 14px; padding: 12px;
+    text-align: center; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 15px rgba(255,107,53,0.35); margin-bottom: 10px;
+    letter-spacing: 0.2px;
+  }
+
+  /* Who ordered chips */
+  .ordered-section { margin-top: 4px; }
+  .ordered-chips { display: flex; gap: 5px; flex-wrap: wrap; }
+  .person-chip {
+    padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 500;
+  }
+  .person-chip.done { background: #e8f5e9; color: #2e7d32; }
+  .person-chip.pending { background: #f5f5f5; color: #aaa; }
+
+  /* --- Summary screen --- */
+  .summary-item {
+    background: #fff; border-radius: 12px; padding: 10px 12px;
+    margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .summary-item-top { display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .summary-item-name { font-size: 12px; font-weight: 700; color: #222; }
+  .summary-item-total { font-size: 12px; font-weight: 700; color: #ff6b35; }
+  .summary-item-who { font-size: 11px; color: #888; }
+
+  .total-box {
+    background: linear-gradient(135deg, #ff6b35, #f7931e);
+    border-radius: 14px; padding: 12px; color: white; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .total-label { font-size: 12px; opacity: 0.85; }
+  .total-amount { font-size: 18px; font-weight: 800; }
+
+  .copy-box {
+    background: #1e1e2e; border-radius: 12px; padding: 10px 12px;
+    font-family: monospace; font-size: 11px; color: #a0e0a0; line-height: 1.7;
+    margin-bottom: 8px;
+  }
+  .copy-btn {
+    background: #fff; border: 1.5px solid #ff6b35; color: #ff6b35;
+    border-radius: 12px; padding: 10px; text-align: center;
+    font-size: 12px; font-weight: 700;
+  }
+
+  /* --- Debt screen --- */
+  .debt-card {
+    background: #fff; border-radius: 14px; padding: 10px 12px;
+    margin-bottom: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .debt-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .debt-name { font-size: 13px; font-weight: 700; }
+  .debt-amount { font-size: 14px; font-weight: 800; }
+  .debt-amount.paid { color: #2e7d32; }
+  .debt-amount.unpaid { color: #e53935; }
+  .debt-status {
+    font-size: 10px; padding: 2px 8px; border-radius: 10px;
+    font-weight: 600; display: inline-block; margin-left: 6px;
+  }
+  .debt-status.paid { background: #e8f5e9; color: #2e7d32; }
+  .debt-status.unpaid { background: #fce4ec; color: #e53935; }
+  .pay-btn {
+    background: linear-gradient(135deg, #1565c0, #1976d2);
+    color: white; border-radius: 10px; padding: 7px 10px;
+    font-size: 11px; font-weight: 600; text-align: center; margin-top: 2px;
+  }
+  .pay-note { font-size: 10px; color: #bbb; margin-top: 4px; font-family: monospace; }
+
+  .week-selector {
+    display: flex; justify-content: center; align-items: center; gap: 12px;
+    padding: 8px 0; margin-bottom: 8px;
+  }
+  .week-arrow { font-size: 18px; color: #ccc; cursor: pointer; }
+  .week-label { font-size: 13px; font-weight: 700; color: #333; }
+
+  /* Bottom nav hint */
+  .bottom-nav {
+    background: #fff; border-top: 1px solid #f0f0f0;
+    display: flex; padding: 8px 0 16px;
+  }
+  .nav-item {
+    flex: 1; text-align: center; font-size: 9px;
+    color: #ccc; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  }
+  .nav-item.active { color: #ff6b35; }
+  .nav-icon { font-size: 18px; }
+</style>
+</head>
+<body>
+
+<div class="page-title">
+  🍱 Lunch App — UI Design
+  <span>Chọn màn hình nào cần điều chỉnh</span>
+</div>
+
+<div class="screens">
+
+  <!-- SCREEN 1: ORDER -->
+  <div>
+    <div style="text-align:center;font-size:12px;font-weight:600;color:#666;margin-bottom:10px;">1. Order</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-screen">
+        <div class="app-header">
+          <div class="app-header-top">
+            <div class="app-logo">🍱 Lunch</div>
+            <div class="app-date">Thứ Hai, 21/04</div>
+          </div>
+          <div class="timer-badge">⏳ Còn 1 giờ 23 phút</div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab active"><div class="tab-icon">🍱</div>Order</div>
+          <div class="tab"><div class="tab-icon">📋</div>Tổng hợp</div>
+          <div class="tab"><div class="tab-icon">💰</div>Nợ</div>
+          <div class="tab"><div class="tab-icon">📊</div>Lịch sử</div>
+        </div>
+        <div class="screen-body">
+          <input class="name-input" placeholder="👤 Tên của bạn..." value="Chi">
+
+          <div class="section-label">Menu hôm nay</div>
+          <div class="menu-card">
+            <div class="menu-item">
+              <div class="item-check"></div>
+              <div class="item-name">Cơm gà mắm tỏi</div>
+              <div class="item-price">35k</div>
+            </div>
+            <div class="menu-item selected">
+              <div class="item-check checked">✓</div>
+              <div class="item-name">Cơm sườn</div>
+              <div class="item-price selected-price">30k</div>
+            </div>
+            <div class="menu-item">
+              <div class="item-check"></div>
+              <div class="item-name">Bún thịt nướng ĐĐ</div>
+              <div class="item-price">40k</div>
+            </div>
+            <div class="menu-item">
+              <div class="item-check"></div>
+              <div class="item-name">Mì trộn gà trứng</div>
+              <div class="item-price">40k</div>
+            </div>
+          </div>
+
+          <div class="addon-strip">
+            <div class="addon-label">+ Add-on cho Cơm sườn</div>
+            <div class="addon-chips">
+              <div class="addon-chip selected">✓ Chả +5k</div>
+              <div class="addon-chip">Bì +5k</div>
+              <div class="addon-chip">Ốp la +5k</div>
+            </div>
+          </div>
+
+          <div class="cta-btn">Xác nhận order — 35,000đ</div>
+
+          <div class="section-label">Đã order (4/6)</div>
+          <div class="ordered-chips">
+            <div class="person-chip done">An ✓</div>
+            <div class="person-chip done">Bình ✓</div>
+            <div class="person-chip done">Chi ✓</div>
+            <div class="person-chip done">Dũng ✓</div>
+            <div class="person-chip pending">Em…</div>
+            <div class="person-chip pending">Phong…</div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item active"><div class="nav-icon">🍱</div>Order</div>
+          <div class="nav-item"><div class="nav-icon">📋</div>Tổng hợp</div>
+          <div class="nav-item"><div class="nav-icon">💰</div>Nợ</div>
+          <div class="nav-item"><div class="nav-icon">📊</div>Lịch sử</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: SUMMARY -->
+  <div>
+    <div style="text-align:center;font-size:12px;font-weight:600;color:#666;margin-bottom:10px;">2. Tổng hợp</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-screen">
+        <div class="app-header">
+          <div class="app-header-top">
+            <div class="app-logo">📋 Tổng hợp</div>
+            <div style="background:rgba(255,255,255,0.2);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;">🔒 Chốt đơn</div>
+          </div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px;">Thứ Hai 21/04 · 6/6 đã order</div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab"><div class="tab-icon">🍱</div>Order</div>
+          <div class="tab active"><div class="tab-icon">📋</div>Tổng hợp</div>
+          <div class="tab"><div class="tab-icon">💰</div>Nợ</div>
+          <div class="tab"><div class="tab-icon">📊</div>Lịch sử</div>
+        </div>
+        <div class="screen-body">
+          <div class="total-box">
+            <div><div class="total-label">Tổng hôm nay</div><div class="total-amount">220,000đ</div></div>
+            <div style="font-size:28px;opacity:0.3;">💰</div>
+          </div>
+
+          <div class="summary-item">
+            <div class="summary-item-top">
+              <div class="summary-item-name">Cơm gà mắm tỏi</div>
+              <div class="summary-item-total">70k</div>
+            </div>
+            <div class="summary-item-who">An, Bình · ×2</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-top">
+              <div class="summary-item-name">Cơm sườn + chả</div>
+              <div class="summary-item-total">70k</div>
+            </div>
+            <div class="summary-item-who">Chi, Dũng · ×2</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-top">
+              <div class="summary-item-name">Bún TN đầy đủ</div>
+              <div class="summary-item-total">40k</div>
+            </div>
+            <div class="summary-item-who">Em · ×1</div>
+          </div>
+          <div class="summary-item">
+            <div class="summary-item-top">
+              <div class="summary-item-name">Mì trộn HQ ốp la</div>
+              <div class="summary-item-total">40k</div>
+            </div>
+            <div class="summary-item-who">Phong · ×1</div>
+          </div>
+
+          <div class="copy-box">
+📋 ORDER 21/04<br>
+- Cơm gà: An, Bình (×2)<br>
+- Cơm sườn+chả: Chi, Dũng (×2)<br>
+- Bún TN ĐĐ: Em<br>
+- Mì trộn HQ ốp la: Phong<br>
+💰 Tổng: 220k
+          </div>
+          <div class="copy-btn">📋 Copy gửi Zalo</div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item"><div class="nav-icon">🍱</div>Order</div>
+          <div class="nav-item active"><div class="nav-icon">📋</div>Tổng hợp</div>
+          <div class="nav-item"><div class="nav-icon">💰</div>Nợ</div>
+          <div class="nav-item"><div class="nav-icon">📊</div>Lịch sử</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: DEBT -->
+  <div>
+    <div style="text-align:center;font-size:12px;font-weight:600;color:#666;margin-bottom:10px;">3. Nợ</div>
+    <div class="phone">
+      <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+      <div class="phone-screen">
+        <div class="app-header">
+          <div class="app-header-top">
+            <div class="app-logo">💰 Công nợ</div>
+            <div class="app-date">Tuần 17</div>
+          </div>
+          <div style="font-size:11px;opacity:0.8;margin-top:2px;">21/04 – 25/04 · Tổng thu: 750k</div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab"><div class="tab-icon">🍱</div>Order</div>
+          <div class="tab"><div class="tab-icon">📋</div>Tổng hợp</div>
+          <div class="tab active"><div class="tab-icon">💰</div>Nợ</div>
+          <div class="tab"><div class="tab-icon">📊</div>Lịch sử</div>
+        </div>
+        <div class="screen-body">
+          <div class="week-selector">
+            <div class="week-arrow">‹</div>
+            <div class="week-label">Tuần 17 · 21–25/04</div>
+            <div class="week-arrow">›</div>
+          </div>
+
+          <div class="debt-card">
+            <div class="debt-card-top">
+              <div class="debt-name">An <span class="debt-status paid">✓ Đã trả</span><span style="font-size:9px;color:#aaa;margin-left:4px;">SePay</span></div>
+              <div class="debt-amount paid">150k</div>
+            </div>
+          </div>
+
+          <div class="debt-card">
+            <div class="debt-card-top">
+              <div class="debt-name">Bình <span class="debt-status paid">✓ Đã trả</span></div>
+              <div class="debt-amount paid">140k</div>
+            </div>
+          </div>
+
+          <div class="debt-card">
+            <div class="debt-card-top">
+              <div class="debt-name">Chi <span class="debt-status unpaid">⏳ Chưa trả</span></div>
+              <div class="debt-amount unpaid">160k</div>
+            </div>
+            <div class="pay-btn">📱 Mở app ngân hàng — Chuyển 160k</div>
+            <div class="pay-note">ND: Lunch Tuan 17 Chi</div>
+          </div>
+
+          <div class="debt-card">
+            <div class="debt-card-top">
+              <div class="debt-name">Dũng <span class="debt-status unpaid">⏳ Chưa trả</span></div>
+              <div class="debt-amount unpaid">175k</div>
+            </div>
+            <div class="pay-btn">📱 Mở app ngân hàng — Chuyển 175k</div>
+            <div class="pay-note">ND: Lunch Tuan 17 Dung</div>
+          </div>
+        </div>
+        <div class="bottom-nav">
+          <div class="nav-item"><div class="nav-icon">🍱</div>Order</div>
+          <div class="nav-item"><div class="nav-icon">📋</div>Tổng hợp</div>
+          <div class="nav-item active"><div class="nav-icon">💰</div>Nợ</div>
+          <div class="nav-item"><div class="nav-icon">📊</div>Lịch sử</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="text-align:center;padding:0 20px 30px;font-size:12px;color:#888;">
+  Góp ý màu sắc, layout, hay flow nào cần thay đổi trong terminal
+</div>
+
+</body>
+</html>

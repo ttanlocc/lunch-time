@@ -1,0 +1,25 @@
+{"type":"server-started","port":61785,"host":"0.0.0.0","url_host":"localhost","url":"http://localhost:61785","screen_dir":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content","state_dir":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/state"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/app-flows.html"}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672037801}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672038678}
+{"source":"user-event","type":"click","text":"2\n    \n      📋 Order Summary (người chốt đơn)\n      Xem tổng hợp đơn → Copy text → Paste Zalo · Manual lock\n      Text format sẵn · 1 click copy","choice":"summary","id":null,"timestamp":1776672044086}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672044521}
+{"source":"user-event","type":"click","text":"2\n    \n      📋 Order Summary (người chốt đơn)\n      Xem tổng hợp đơn → Copy text → Paste Zalo · Manual lock\n      Text format sẵn · 1 click copy","choice":"summary","id":null,"timestamp":1776672044918}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672047813}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672049726}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672050033}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672050183}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672050889}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672051676}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672051766}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672051976}
+{"source":"user-event","type":"click","text":"1\n    \n      🍱 Order Flow (hàng ngày)\n      Xem menu → Nhập tên → Chọn món → Submit\n      Auto-lock 11:00 · Ai cũng làm được · Không cần login","choice":"order","id":null,"timestamp":1776672052539}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/order-flow.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/order-real-menu.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/menu-import.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/summary-debt.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/ui-polished.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/desktop-pastel.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/desktop-v2.html"}
+{"type":"screen-added","file":"/home/azureuser/aiq/lunch-time/.superpowers/brainstorm/3494869-1776670758/content/debt-qr.html"}
+{"type":"server-stopped","reason":"idle timeout"}
