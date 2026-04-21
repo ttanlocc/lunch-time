@@ -75,3 +75,96 @@ ordersRouter.post('/', (req, res) => {
   broadcast('order_submitted', { order, date: today });
   res.status(201).json(order);
 });
+
+// POST /api/orders/confirm - mark order as placed
+ordersRouter.post('/confirm', (req, res) => {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const { person_name } = req.body;
+
+  if (!person_name) {
+    return res.status(400).json({ error: 'person_name required' });
+  }
+
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE daily_menu
+    SET confirmed_at = ?, confirmed_by = ?
+    WHERE date = ?
+  `).run(now, person_name, today);
+
+  const confirmation = { confirmed_at: now, confirmed_by: person_name, date: today };
+  broadcast('order_confirmed', confirmation);
+  res.json(confirmation);
+});
+
+// GET /api/orders/confirmation - get today's confirmation status
+ordersRouter.get('/confirmation', (req, res) => {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const row = db.prepare('SELECT confirmed_at, confirmed_by FROM daily_menu WHERE date = ? LIMIT 1').get(today);
+  res.json({
+    confirmed_at: row?.confirmed_at || null,
+    confirmed_by: row?.confirmed_by || null
+  });
+});
+
+// PUT /api/orders/:id - admin override order
+ordersRouter.put('/:id', (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+  const { menu_item_id, addon_ids = [] } = req.body;
+
+  if (!menu_item_id) {
+    return res.status(400).json({ error: 'menu_item_id required' });
+  }
+
+  const existing = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  const update = db.transaction(() => {
+    db.prepare('DELETE FROM order_addons WHERE order_id = ?').run(id);
+    db.prepare('UPDATE orders SET menu_item_id = ? WHERE id = ?').run(menu_item_id, id);
+
+    for (const addon_id of addon_ids) {
+      db.prepare('INSERT INTO order_addons (order_id, addon_id) VALUES (?, ?)').run(id, addon_id);
+    }
+  });
+
+  update();
+
+  const order = db.prepare(`
+    SELECT o.id, o.person_name, mi.name as item_name, mi.price,
+           GROUP_CONCAT(ma.name) as addon_names
+    FROM orders o
+    JOIN menu_items mi ON mi.id = o.menu_item_id
+    LEFT JOIN order_addons oa ON oa.order_id = o.id
+    LEFT JOIN menu_addons ma ON ma.id = oa.addon_id
+    WHERE o.id = ?
+    GROUP BY o.id
+  `).get(id);
+
+  broadcast('order_submitted', { order, date: existing.date });
+  res.json(order);
+});
+
+// DELETE /api/orders/:id - admin delete order
+ordersRouter.delete('/:id', (req, res) => {
+  const db = getDb();
+  const { id } = req.params;
+
+  const existing = db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
+  if (!existing) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  db.prepare('DELETE FROM order_addons WHERE order_id = ?').run(id);
+  db.prepare('DELETE FROM orders WHERE id = ?').run(id);
+
+  broadcast('order_deleted', { id, person_name: existing.person_name, date: existing.date });
+  res.json({ deleted: true, id });
+});

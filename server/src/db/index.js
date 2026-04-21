@@ -15,6 +15,15 @@ export function getDb() {
     _db.pragma('journal_mode = WAL');
     _db.pragma('foreign_keys = ON');
     _db.exec(CREATE_TABLES);
+
+    // Migration: add confirmed_at and confirmed_by columns to daily_menu
+    const columns = _db.prepare("PRAGMA table_info(daily_menu)").all().map(c => c.name);
+    if (!columns.includes('confirmed_at')) {
+      _db.exec('ALTER TABLE daily_menu ADD COLUMN confirmed_at TEXT');
+    }
+    if (!columns.includes('confirmed_by')) {
+      _db.exec('ALTER TABLE daily_menu ADD COLUMN confirmed_by TEXT');
+    }
   }
   return _db;
 }
