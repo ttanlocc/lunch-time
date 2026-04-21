@@ -1,17 +1,18 @@
-// client/src/pages/OrderPage.jsx
+// client/src/pages/AdminOrderPage.jsx
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api.js';
 import { useSSE } from '../hooks/useSSE.js';
 import { NameSelector } from '../components/NameSelector.jsx';
 import { MenuList } from '../components/MenuList.jsx';
 import { ConfirmBanner } from '../components/ConfirmBanner.jsx';
+import { OverrideModal } from '../components/OverrideModal.jsx';
 
 function getKnownNames(orders) {
   const set = new Set(orders.map(o => o.person_name));
   return [...set];
 }
 
-export function OrderPage() {
+export function AdminOrderPage() {
   const [menu, setMenu] = useState({ items: [], is_locked: false });
   const [orders, setOrders] = useState([]);
   const [selectedName, setSelectedName] = useState('');
@@ -20,6 +21,7 @@ export function OrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [knownNames, setKnownNames] = useState([]);
   const [confirmation, setConfirmation] = useState({ confirmed_at: null, confirmed_by: null });
+  const [editingOrder, setEditingOrder] = useState(null);
 
   useEffect(() => {
     api.getMenuToday().then(setMenu);
@@ -37,6 +39,7 @@ export function OrderPage() {
     }),
     order_locked: () => setMenu(m => ({ ...m, is_locked: true })),
     order_confirmed: (data) => setConfirmation(data),
+    order_deleted: ({ id }) => setOrders(prev => prev.filter(o => o.id !== id)),
   });
 
   function handleSelectItem(id) {
@@ -57,6 +60,21 @@ export function OrderPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function handleLock() {
+    await api.lockMenu();
+    setMenu(m => ({ ...m, is_locked: true }));
+  }
+
+  async function handleOverrideSave(data) {
+    await api.updateOrder(editingOrder.id, data);
+    setEditingOrder(null);
+  }
+
+  async function handleOverrideDelete(id) {
+    await api.deleteOrder(id);
+    setEditingOrder(null);
   }
 
   const selectedItem = menu.items.find(i => i.id === selectedItemId);
@@ -82,8 +100,13 @@ export function OrderPage() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {menu.is_locked
             ? <span style={{ background: 'var(--color-primary-light)', color: '#e11d48', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>🔒 Đã chốt</span>
-            : <span style={{ background: 'var(--gradient-primary)', color: '#fff', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700, opacity: 0.8 }}>⏳ Đang mở</span>
+            : <span style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', color: 'var(--color-secondary)', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>⏳ Đang mở</span>
           }
+          {!menu.is_locked && (
+            <button onClick={handleLock} style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'linear-gradient(135deg,#fca5a5,#f472b6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+              🔒 Chốt đơn
+            </button>
+          )}
         </div>
       </div>
 
@@ -93,7 +116,7 @@ export function OrderPage() {
           <NameSelector names={allNames} selected={selectedName} onSelect={setSelectedName} />
           {menu.items.length === 0
             ? <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-lg)', padding: 24, textAlign: 'center', color: 'var(--color-text-light)', boxShadow: 'var(--shadow-card)' }}>
-                Chưa có menu hôm nay — vào <strong>Import Menu</strong> để thêm
+                Chưa có menu hôm nay
               </div>
             : <MenuList items={menu.items} selectedItemId={selectedItemId} selectedAddonIds={selectedAddonIds} onSelectItem={handleSelectItem} onToggleAddon={handleToggleAddon} />
           }
@@ -130,14 +153,27 @@ export function OrderPage() {
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {orders.map(o => (
-                <span key={o.id} style={{ padding: '5px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 600, background: 'var(--color-success-light)', color: 'var(--color-success)' }}>
+                <span key={o.id} onClick={() => setEditingOrder(o)} style={{
+                  padding: '5px 12px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 600,
+                  background: 'var(--color-success-light)', color: 'var(--color-success)',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
+                }}>
                   {o.person_name} ✓
+                  <span style={{ fontSize: 10, opacity: 0.7 }}>✏️</span>
                 </span>
               ))}
             </div>
           </div>
         </div>
       </div>
+
+      <OverrideModal
+        order={editingOrder}
+        menuItems={menu.items}
+        onSave={handleOverrideSave}
+        onDelete={handleOverrideDelete}
+        onClose={() => setEditingOrder(null)}
+      />
     </div>
   );
 }

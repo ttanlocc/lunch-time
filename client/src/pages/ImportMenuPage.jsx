@@ -12,15 +12,22 @@ export function ImportMenuPage() {
     if (!text.trim()) return;
     setParsing(true);
     try {
-      const r = await api.importMenu(text);
+      const r = await api.previewMenu(text);
       setResult(r);
+    } catch (e) {
+      alert('Lỗi phân tích menu: ' + e.message);
     } finally {
       setParsing(false);
     }
   }
 
   async function handleConfirm() {
-    setDone(true);
+    try {
+      await api.importMenu(text);
+      setDone(true);
+    } catch (e) {
+      alert('Lỗi lưu menu: ' + e.message);
+    }
   }
 
   const TAG_STYLES = {
