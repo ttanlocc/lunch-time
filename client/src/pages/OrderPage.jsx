@@ -31,9 +31,16 @@ export function OrderPage() {
   }, []);
 
   useSSE({
-    order_submitted: ({ order }) => setOrders(prev => {
-      const filtered = prev.filter(o => o.person_name !== order.person_name);
-      return [...filtered, order];
+    order_submitted: (data) => setOrders(prev => {
+      // Handle both old format { order } and new format { orders, person_name }
+      if (data.orders) {
+        const filtered = prev.filter(o => o.person_name !== data.person_name);
+        return [...filtered, ...data.orders];
+      } else if (data.order) {
+        const filtered = prev.filter(o => o.person_name !== data.order.person_name);
+        return [...filtered, data.order];
+      }
+      return prev;
     }),
     order_locked: () => setMenu(m => ({ ...m, is_locked: true })),
     order_confirmed: (data) => setConfirmation(data),
@@ -52,20 +59,25 @@ export function OrderPage() {
     if (!selectedName || !selectedItemId) return;
     setSubmitting(true);
     try {
-      await api.submitOrder({ person_name: selectedName, menu_item_id: selectedItemId, addon_ids: selectedAddonIds });
+      // Get extra item IDs (from "Gọi thêm" category)
+      const extraIds = selectedAddonIds.filter(id => {
+        const item = menu.items.find(i => i.id === id);
+        return item?.category === 'extra';
+      });
+      await api.submitOrder({ person_name: selectedName, menu_item_id: selectedItemId, extra_ids: extraIds });
       if (!knownNames.includes(selectedName)) setKnownNames(n => [...n, selectedName]);
+      // Reset selections after submit
+      setSelectedAddonIds([]);
     } finally {
       setSubmitting(false);
     }
   }
 
   const selectedItem = menu.items.find(i => i.id === selectedItemId);
-  const totalPrice = selectedItem
-    ? selectedItem.price + selectedAddonIds.reduce((sum, id) => {
-        const addon = selectedItem.addons?.find(a => a.id === id);
-        return sum + (addon?.price || 0);
-      }, 0)
-    : 0;
+  // Calculate total: main dish + extra items (Gọi thêm)
+  const extraItems = menu.items.filter(i => i.category === 'extra' && selectedAddonIds.includes(i.id));
+  const extraTotal = extraItems.reduce((sum, item) => sum + item.price, 0);
+  const totalPrice = selectedItem ? selectedItem.price + extraTotal : extraTotal;
 
   const orderedNames = new Set(orders.map(o => o.person_name));
   const allNames = [...new Set([...knownNames, ...orderedNames])];
@@ -104,10 +116,10 @@ export function OrderPage() {
             <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 10 }}>Order của bạn</div>
             <div style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', borderRadius: 'var(--radius-md)', padding: 14, marginBottom: 10 }}>
               <div style={{ fontSize: 10, color: 'var(--color-secondary)', fontWeight: 700, marginBottom: 4 }}>ĐANG CHỌN</div>
-              {selectedItem
+              {selectedItem || extraItems.length > 0
                 ? <>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{selectedItem.name}</div>
-                    {selectedAddonIds.length > 0 && <div style={{ fontSize: 11, color: 'var(--color-secondary)', marginTop: 2 }}>+ {selectedAddonIds.map(id => selectedItem.addons?.find(a => a.id === id)?.name).join(', ')}</div>}
+                    {selectedItem && <div style={{ fontSize: 13, fontWeight: 700 }}>{selectedItem.name}</div>}
+                    {extraItems.length > 0 && <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2 }}>+ {extraItems.map(e => e.name).join(', ')}</div>}
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{(totalPrice / 1000).toFixed(0)},000đ</div>
                   </>
                 : <div style={{ fontSize: 13, color: 'var(--color-text-light)', margin: '8px 0 12px' }}>Chưa chọn món</div>

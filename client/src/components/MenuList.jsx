@@ -41,6 +41,7 @@ function getFoodType(item) {
 
 function CategoryCard({ category, items, selectedItemId, selectedAddonIds, onSelectItem, onToggleAddon }) {
   const config = FOOD_TYPE_CONFIG[category] || { icon: '📦', color: '#7c6f8e' };
+  const isAddonCategory = category === 'Gọi thêm';
 
   return (
     <div style={{
@@ -61,48 +62,90 @@ function CategoryCard({ category, items, selectedItemId, selectedAddonIds, onSel
         <span style={{ fontSize: 20 }}>{config.icon}</span>
         <div>
           <div style={{ fontSize: 14, fontWeight: 700, color: config.color }}>{category}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{items.length} món</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+            {items.length} món {isAddonCategory && '· chọn nhiều'}
+          </div>
         </div>
       </div>
 
-      {/* Items Grid */}
+      {/* Items */}
       <div style={{ padding: 8 }}>
-        {items.map(item => (
-          <div key={item.id}>
-            <div onClick={() => onSelectItem(item.id)} style={{
-              display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
-              borderRadius: 'var(--radius-sm)', cursor: 'pointer',
-              border: '1.5px solid',
-              borderColor: selectedItemId === item.id ? 'var(--color-primary)' : 'transparent',
-              background: selectedItemId === item.id ? 'var(--color-primary-light)' : 'transparent',
-              transition: 'all 0.15s',
-              marginBottom: 2,
-            }}>
-              <div style={{
-                width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
-                background: selectedItemId === item.id ? 'var(--gradient-primary)' : 'none',
-                border: selectedItemId === item.id ? 'none' : '2px solid var(--color-border)',
-                color: selectedItemId === item.id ? '#fff' : 'transparent',
-              }}>
-                {selectedItemId === item.id ? '✓' : ''}
-              </div>
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.name}</div>
-              <div style={{
-                fontSize: 13, fontWeight: 700,
-                color: selectedItemId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
-                background: selectedItemId === item.id ? 'transparent' : 'var(--color-border)',
-                padding: '2px 8px',
-                borderRadius: 'var(--radius-pill)',
-              }}>
-                {(item.price / 1000).toFixed(0)}k
-              </div>
-            </div>
-            {selectedItemId === item.id && (
-              <AddonWidget addons={item.addons} selectedAddonIds={selectedAddonIds} onToggleAddon={onToggleAddon} />
-            )}
+        {isAddonCategory ? (
+          // Checkbox grid for add-ons (multi-select)
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '4px' }}>
+            {items.map(item => {
+              const isSelected = selectedAddonIds.includes(item.id);
+              return (
+                <button key={item.id} onClick={() => onToggleAddon(item.id)} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '8px 14px', borderRadius: 'var(--radius-pill)',
+                  cursor: 'pointer', border: '1.5px solid',
+                  borderColor: isSelected ? 'transparent' : 'var(--color-border)',
+                  background: isSelected ? 'linear-gradient(135deg, #06b6d4, #0891b2)' : 'var(--color-card)',
+                  color: isSelected ? '#fff' : 'var(--color-text)',
+                  fontSize: 13, fontWeight: 500,
+                  transition: 'all 0.15s',
+                }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 4, flexShrink: 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 11, fontWeight: 700,
+                    background: isSelected ? '#fff' : 'var(--color-border)',
+                    color: isSelected ? '#06b6d4' : 'transparent',
+                  }}>
+                    {isSelected ? '✓' : ''}
+                  </span>
+                  {item.name}
+                  <span style={{
+                    fontSize: 12, fontWeight: 700,
+                    color: isSelected ? '#fff' : 'var(--color-text-muted)',
+                    opacity: isSelected ? 0.9 : 1,
+                  }}>
+                    +{(item.price / 1000).toFixed(0)}k
+                  </span>
+                </button>
+              );
+            })}
           </div>
-        ))}
+        ) : (
+          // Radio list for main dishes (single select)
+          items.map(item => (
+            <div key={item.id}>
+              <div onClick={() => onSelectItem(item.id)} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
+                borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                border: '1.5px solid',
+                borderColor: selectedItemId === item.id ? 'var(--color-primary)' : 'transparent',
+                background: selectedItemId === item.id ? 'var(--color-primary-light)' : 'transparent',
+                transition: 'all 0.15s',
+                marginBottom: 2,
+              }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11,
+                  background: selectedItemId === item.id ? 'var(--gradient-primary)' : 'none',
+                  border: selectedItemId === item.id ? 'none' : '2px solid var(--color-border)',
+                  color: selectedItemId === item.id ? '#fff' : 'transparent',
+                }}>
+                  {selectedItemId === item.id ? '✓' : ''}
+                </div>
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{item.name}</div>
+                <div style={{
+                  fontSize: 13, fontWeight: 700,
+                  color: selectedItemId === item.id ? 'var(--color-primary)' : 'var(--color-text-muted)',
+                  background: selectedItemId === item.id ? 'transparent' : 'var(--color-border)',
+                  padding: '2px 8px',
+                  borderRadius: 'var(--radius-pill)',
+                }}>
+                  {(item.price / 1000).toFixed(0)}k
+                </div>
+              </div>
+              {selectedItemId === item.id && (
+                <AddonWidget addons={item.addons} selectedAddonIds={selectedAddonIds} onToggleAddon={onToggleAddon} />
+              )}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,46 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: 🍱 LunchTime
+      - generic [ref=e7]: ADMIN
+    - link "🍱 Order hôm nay" [ref=e8] [cursor=pointer]:
+      - /url: /admin
+      - generic [ref=e9]: 🍱
+      - text: Order hôm nay
+    - link "📋 Tổng hợp" [ref=e10] [cursor=pointer]:
+      - /url: /admin/summary
+      - generic [ref=e11]: 📋
+      - text: Tổng hợp
+    - link "💰 Công nợ" [ref=e12] [cursor=pointer]:
+      - /url: /admin/debt
+      - generic [ref=e13]: 💰
+      - text: Công nợ
+    - generic [ref=e14]:
+      - strong [ref=e15]: Tuần 20-04 – 24-04
+      - text: Tuần hiện tại
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: Order hôm nay
+          - generic [ref=e21]: Thứ Ba, 21/04/2026
+        - generic [ref=e22]:
+          - generic [ref=e23]: ⏳ Đang mở
+          - button "🔒 Chốt đơn" [ref=e24] [cursor=pointer]
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: ⏳
+            - text: Chưa ai đặt cơm
+          - generic [ref=e29]:
+            - generic [ref=e30]: Bạn là ai?
+            - button "+ Tên mới" [ref=e32] [cursor=pointer]
+          - generic [ref=e33]: Chưa có menu hôm nay
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]: Order của bạn
+            - generic [ref=e37]:
+              - generic [ref=e38]: ĐANG CHỌN
+              - generic [ref=e39]: Chưa chọn món
+              - button "Xác nhận order ✓" [disabled] [ref=e40]
+          - generic [ref=e42]: Đã order (0/?)

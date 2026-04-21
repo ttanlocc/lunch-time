@@ -32,7 +32,7 @@ ordersRouter.get('/today', (req, res) => {
 ordersRouter.post('/', (req, res) => {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
-  const { person_name, menu_item_id, addon_ids = [] } = req.body;
+  const { person_name, menu_item_id, extra_ids = [] } = req.body;
 
   if (!person_name || !menu_item_id) {
     return res.status(400).json({ error: 'person_name and menu_item_id required' });
@@ -42,38 +42,45 @@ ordersRouter.post('/', (req, res) => {
   if (isLocked) return res.status(409).json({ error: 'Orders are locked for today' });
 
   const submit = db.transaction(() => {
-    const existing = db.prepare('SELECT id FROM orders WHERE person_name = ? AND date = ?').get(person_name, today);
-    if (existing) {
+    // Delete all existing orders for this person today (fresh order)
+    const existingOrders = db.prepare('SELECT id FROM orders WHERE person_name = ? AND date = ?').all(person_name, today);
+    for (const existing of existingOrders) {
       db.prepare('DELETE FROM order_addons WHERE order_id = ?').run(existing.id);
       db.prepare('DELETE FROM orders WHERE id = ?').run(existing.id);
     }
 
-    const { lastInsertRowid } = db.prepare(
+    const orderIds = [];
+
+    // Create main dish order
+    const { lastInsertRowid: mainOrderId } = db.prepare(
       'INSERT INTO orders (person_name, menu_item_id, date) VALUES (?, ?, ?)'
     ).run(person_name, menu_item_id, today);
+    orderIds.push(mainOrderId);
 
-    for (const addon_id of addon_ids) {
-      db.prepare('INSERT INTO order_addons (order_id, addon_id) VALUES (?, ?)').run(lastInsertRowid, addon_id);
+    // Create separate order for each extra item
+    for (const extra_id of extra_ids) {
+      const { lastInsertRowid: extraOrderId } = db.prepare(
+        'INSERT INTO orders (person_name, menu_item_id, date) VALUES (?, ?, ?)'
+      ).run(person_name, extra_id, today);
+      orderIds.push(extraOrderId);
     }
 
-    return lastInsertRowid;
+    return orderIds;
   });
 
-  const orderId = submit();
+  const orderIds = submit();
 
-  const order = db.prepare(`
-    SELECT o.id, o.person_name, mi.name as item_name, mi.price,
-           GROUP_CONCAT(ma.name) as addon_names
+  // Get all orders for this person
+  const orders = db.prepare(`
+    SELECT o.id, o.person_name, mi.name as item_name, mi.price, mi.category
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN order_addons oa ON oa.order_id = o.id
-    LEFT JOIN menu_addons ma ON ma.id = oa.addon_id
-    WHERE o.id = ?
-    GROUP BY o.id
-  `).get(orderId);
+    WHERE o.person_name = ? AND o.date = ?
+    ORDER BY mi.category, o.created_at
+  `).all(person_name, today);
 
-  broadcast('order_submitted', { order, date: today });
-  res.status(201).json(order);
+  broadcast('order_submitted', { orders, person_name, date: today });
+  res.status(201).json({ orders, person_name });
 });
 
 // POST /api/orders/confirm - mark order as placed

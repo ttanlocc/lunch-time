@@ -1,0 +1,7 @@
+[     349ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5174/node_modules/.vite/deps/react-dom_client.js?v=0e182bc0:14336
+[     455ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5174/api/orders/confirmation:0
+[     456ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:5174/api/orders/confirmation:0
+[     473ms] Error: GET /orders/confirmation → 404
+    at request (http://localhost:5174/src/lib/api.js:9:21)
+[     474ms] Error: GET /orders/confirmation → 404
+    at request (http://localhost:5174/src/lib/api.js:9:21)
