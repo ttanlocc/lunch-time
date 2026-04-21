@@ -1,4 +1,6 @@
+@import './styles/variables.css';
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif; color: var(--color-text); }
 button { font-family: inherit; }
 input, textarea { font-family: inherit; }

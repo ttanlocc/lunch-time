@@ -1,0 +1,27 @@
+/* client/src/styles/variables.css */
+:root {
+  --color-primary: #ec4899;
+  --color-primary-light: #fce7f3;
+  --color-secondary: #a855f7;
+  --color-secondary-light: #ede9fe;
+  --color-success: #059669;
+  --color-success-light: #d1fae5;
+  --color-text: #2d2d3a;
+  --color-text-muted: #7c6f8e;
+  --color-text-light: #aaa;
+  --color-border: #f5f0fb;
+  --color-bg: #fdf8ff;
+  --color-card: #fff;
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 14px;
+  --radius-pill: 20px;
+
+  --shadow-card: 0 2px 12px rgba(180, 140, 220, 0.1);
+  --shadow-button: 0 4px 14px rgba(192, 132, 252, 0.35);
+
+  --gradient-primary: linear-gradient(135deg, #f9a8d4, #c084fc);
+  --gradient-sidebar: linear-gradient(180deg, #fce7f3 0%, #ede9fe 100%);
+  --gradient-header: linear-gradient(135deg, #f9a8d4 0%, #c084fc 50%, #93c5fd 100%);
+}
