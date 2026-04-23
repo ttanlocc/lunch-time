@@ -13,6 +13,10 @@ describe('buildQrCode', () => {
   it('truncates name slug to 10 chars', () => {
     expect(buildQrCode('Nguyen Thi Hoa', 16, 2026)).toBe('LUNCH-NGUYENTHIH-W16-2026');
   });
+
+  it('converts đ to d', () => {
+    expect(buildQrCode('Đức', 16, 2026)).toBe('LUNCH-DUC-W16-2026');
+  });
 });
 
 describe('parseQrCode', () => {

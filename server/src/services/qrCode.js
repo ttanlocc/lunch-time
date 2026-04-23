@@ -1,5 +1,7 @@
 export function buildQrCode(personName, week, year) {
   const slug = personName
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '')
