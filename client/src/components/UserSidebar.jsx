@@ -1,10 +1,11 @@
 // client/src/components/UserSidebar.jsx
 import { NavLink } from 'react-router-dom';
+import { UtensilsCrossed, ClipboardList, CreditCard } from 'lucide-react';
 
 const NAV = [
-  { to: '/', icon: '🍱', label: 'Order hôm nay' },
-  { to: '/import', icon: '📥', label: 'Import menu' },
-  { to: '/summary', icon: '📋', label: 'Tổng hợp' },
+  { to: '/', icon: UtensilsCrossed, label: 'Order hôm nay' },
+  { to: '/summary', icon: ClipboardList, label: 'Tổng hợp' },
+  { to: '/debt', icon: CreditCard, label: 'Công nợ' },
 ];
 
 function getWeekLabel() {
@@ -19,13 +20,13 @@ function getWeekLabel() {
 export function UserSidebar() {
   return (
     <aside style={{
-      width: 200, flexShrink: 0,
+      width: 'var(--sidebar-width)', flexShrink: 0,
       background: 'var(--gradient-sidebar)',
-      padding: '20px 14px', display: 'flex', flexDirection: 'column', gap: 4,
+      padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 4,
       borderRight: '1px solid rgba(255,255,255,0.6)',
     }}>
-      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 18, padding: '0 4px', background: 'linear-gradient(135deg,#ec4899,#818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-        🍱 LunchTime
+      <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 18, padding: '0 4px', background: 'var(--gradient-brand)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+        LunchTime
       </div>
       {NAV.map(item => (
         <NavLink key={item.to} to={item.to} end={item.to === '/'} style={({ isActive }) => ({
@@ -35,8 +36,9 @@ export function UserSidebar() {
           color: isActive ? 'var(--color-primary)' : 'var(--color-text-muted)',
           boxShadow: isActive ? 'var(--shadow-card)' : 'none',
           textDecoration: 'none',
+          transition: 'all var(--transition-fast)',
         })}>
-          <span style={{ fontSize: 15, width: 20, textAlign: 'center' }}>{item.icon}</span>
+          <item.icon size={16} strokeWidth={2} />
           {item.label}
         </NavLink>
       ))}
