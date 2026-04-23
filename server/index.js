@@ -6,6 +6,7 @@ import { ordersRouter } from './src/routes/orders.js';
 import { debtsRouter } from './src/routes/debts.js';
 import { eventsRouter } from './src/routes/events.js';
 import { webhookRouter } from './src/routes/webhook.js';
+import { botRouter } from './src/routes/bot.js';
 import { startCron } from './src/cron.js';
 
 const app = express();
@@ -17,6 +18,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/debts', debtsRouter);
 app.use('/api/events', eventsRouter);
 app.use('/api/webhook', webhookRouter);
+app.use('/api/bot', botRouter);
 
 startCron();
 
