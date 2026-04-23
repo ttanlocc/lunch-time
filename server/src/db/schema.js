@@ -39,6 +39,12 @@ export const CREATE_TABLES = `
     addon_id INTEGER NOT NULL REFERENCES menu_addons(id)
   );
 
+  CREATE TABLE IF NOT EXISTS day_exclusions (
+    person_name TEXT NOT NULL,
+    date TEXT NOT NULL,
+    PRIMARY KEY (person_name, date)
+  );
+
   CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     person_name TEXT NOT NULL,
@@ -50,5 +56,13 @@ export const CREATE_TABLES = `
     paid_at TEXT,
     -- amount = sum of orders for that person that week (calculated at QR generation time)
     UNIQUE(person_name, week_number, year)
+  );
+
+  CREATE TABLE IF NOT EXISTS bot_conversation (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    service_url TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    tenant_id TEXT,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `;

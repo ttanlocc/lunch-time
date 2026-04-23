@@ -18,6 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "better-sqlite3": "^12.9.0",
+    "botbuilder": "^4.23.3",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "node-cron": "^4.2.1"
