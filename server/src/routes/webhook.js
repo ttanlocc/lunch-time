@@ -169,3 +169,63 @@ webhookRouter.post('/sepay', (req, res) => {
   broadcast('payment_queued', { id: eventId, amount: transferAmount });
   return res.json({ success: false, reason: 'queued_no_name' });
 });
+
+webhookRouter.get('/unmatched', (req, res) => {
+  const db = getDb();
+  const events = db.prepare(
+    `SELECT * FROM webhook_events WHERE status = 'queued' ORDER BY received_at DESC`
+  ).all();
+
+  const result = events.map(evt => {
+    let suggestion = null;
+    if (evt.notes) {
+      try {
+        const n = JSON.parse(evt.notes);
+        if (n.suggested_person) suggestion = { person_name: n.suggested_person, unpaid_total: n.unpaid_total };
+      } catch {}
+    }
+    return { ...evt, suggestion };
+  });
+
+  res.json({ events: result });
+});
+
+webhookRouter.post('/unmatched/:id/resolve', (req, res) => {
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  const { action, person_name, week, year, password } = req.body;
+
+  if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'wrong_password' });
+  }
+
+  const db = getDb();
+  const evt = db.prepare(`SELECT * FROM webhook_events WHERE id = ?`).get(parseInt(req.params.id));
+  if (!evt) return res.status(404).json({ error: 'not_found' });
+  if (evt.status !== 'queued') return res.status(400).json({ error: 'already_resolved' });
+
+  if (action === 'ignore') {
+    db.prepare(`UPDATE webhook_events SET status = 'ignored' WHERE id = ?`).run(evt.id);
+    return res.json({ success: true });
+  }
+
+  if (action === 'assign') {
+    if (!person_name || !week || !year) return res.status(400).json({ error: 'invalid_params' });
+    const paidAt = new Date().toISOString();
+    db.prepare(`
+      INSERT INTO payments (person_name, week_number, year, amount, status, sepay_ref, paid_at, match_method)
+      VALUES (@person_name, @week_number, @year, @amount, 'paid', @sepay_ref, @paid_at, 'manual')
+      ON CONFLICT(person_name, week_number, year)
+      DO UPDATE SET status='paid', sepay_ref=@sepay_ref, paid_at=@paid_at, amount=@amount, match_method='manual'
+    `).run({ person_name, week_number: parseInt(week), year: parseInt(year), amount: evt.transfer_amount || 0, sepay_ref: evt.sepay_ref, paid_at: paidAt });
+
+    const matched = db.prepare(
+      `SELECT id FROM payments WHERE person_name = ? AND week_number = ? AND year = ?`
+    ).get(person_name, parseInt(week), parseInt(year));
+
+    db.prepare(`UPDATE webhook_events SET status = 'matched', matched_payment_id = ? WHERE id = ?`).run(matched?.id ?? null, evt.id);
+    broadcast('payment_confirmed', { person_name, week: parseInt(week), year: parseInt(year), amount: evt.transfer_amount });
+    return res.json({ success: true });
+  }
+
+  return res.status(400).json({ error: 'invalid_action' });
+});
