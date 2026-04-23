@@ -44,6 +44,15 @@ export function getDb() {
     }
 
     // bot_conversation table created via CREATE TABLE IF NOT EXISTS in schema — no column migration needed
+
+    // Migration: add qr_code and match_method to payments
+    const paymentCols = _db.prepare("PRAGMA table_info(payments)").all().map(c => c.name);
+    if (!paymentCols.includes('qr_code')) {
+      _db.exec('ALTER TABLE payments ADD COLUMN qr_code TEXT');
+    }
+    if (!paymentCols.includes('match_method')) {
+      _db.exec('ALTER TABLE payments ADD COLUMN match_method TEXT');
+    }
   }
   return _db;
 }

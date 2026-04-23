@@ -65,4 +65,16 @@ export const CREATE_TABLES = `
     tenant_id TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS webhook_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    received_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sepay_id INTEGER,
+    raw_content TEXT,
+    transfer_amount INTEGER,
+    sepay_ref TEXT,
+    status TEXT NOT NULL DEFAULT 'queued',
+    matched_payment_id INTEGER REFERENCES payments(id),
+    notes TEXT
+  );
 `;
