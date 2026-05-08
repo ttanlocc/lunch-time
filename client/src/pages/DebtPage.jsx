@@ -290,9 +290,11 @@ function AccumulatedDebtModal({ debt, paid = false, onClose, isAdmin, onAllPaid 
     setError('');
     setLoading(true);
     try {
-      for (const w of debt.unpaid_weeks) {
-        await api.overridePayment({ person_name: debt.person_name, week: w.week, year: w.year, status: 'paid', password });
-      }
+      await Promise.all(
+        debt.unpaid_weeks.map(w =>
+          api.overridePayment({ person_name: debt.person_name, week: w.week, year: w.year, status: 'paid', password })
+        )
+      );
       onAllPaid(debt.person_name);
       setPassword('');
     } catch {

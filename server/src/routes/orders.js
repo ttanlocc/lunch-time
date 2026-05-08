@@ -39,6 +39,10 @@ ordersRouter.post('/', (req, res) => {
     return res.status(400).json({ error: 'person_name and menu_item_id required' });
   }
 
+  if (note && note.length > 200) {
+    return res.status(400).json({ error: 'note must be 200 characters or less' });
+  }
+
   const isLocked = db.prepare('SELECT is_locked FROM daily_menu WHERE date = ? LIMIT 1').get(today)?.is_locked === 1;
   if (isLocked) return res.status(409).json({ error: 'Orders are locked for today' });
 
@@ -119,24 +123,31 @@ ordersRouter.get('/confirmation', (req, res) => {
   });
 });
 
+function getWeekDateRange(week, year) {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - (dayOfWeek - 1) + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
+}
+
 // GET /api/orders/week?week=X&year=Y
 ordersRouter.get('/week', (req, res) => {
   const db = getDb();
   const week = parseInt(req.query.week) || getWeekNumber(new Date().toISOString().slice(0, 10));
   const year = parseInt(req.query.year) || new Date().getFullYear();
 
-  // Query all orders with item info
-  const allOrders = db.prepare(`
+  const { start, end } = getWeekDateRange(week, year);
+
+  const weekOrders = db.prepare(`
     SELECT o.id, o.person_name, o.date, o.note, mi.name as item_name, mi.price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
+    WHERE o.date BETWEEN ? AND ?
     ORDER BY o.date, o.person_name, o.id
-  `).all();
-
-  // Filter to the requested week
-  const weekOrders = allOrders.filter(o =>
-    getWeekNumber(o.date) === week && new Date(o.date).getFullYear() === year
-  );
+  `).all(start, end);
 
   if (weekOrders.length === 0) {
     return res.json({ week, year, days: [] });
