@@ -2,6 +2,7 @@
 import { Router } from 'express';
 import { getDb } from '../db/index.js';
 import { broadcast } from '../services/sse.js';
+import { getWeekNumber } from '../services/debtCalculator.js';
 
 export const ordersRouter = Router();
 
@@ -11,7 +12,7 @@ ordersRouter.get('/today', (req, res) => {
   const today = new Date().toISOString().slice(0, 10);
 
   const orders = db.prepare(`
-    SELECT o.id, o.person_name, mi.name as item_name, mi.price,
+    SELECT o.id, o.person_name, o.note, mi.name as item_name, mi.price, mi.category,
            GROUP_CONCAT(ma.name) as addon_names,
            GROUP_CONCAT(ma.price) as addon_prices
     FROM orders o
@@ -32,10 +33,14 @@ ordersRouter.get('/today', (req, res) => {
 ordersRouter.post('/', (req, res) => {
   const db = getDb();
   const today = new Date().toISOString().slice(0, 10);
-  const { person_name, menu_item_id, extra_ids = [] } = req.body;
+  const { person_name, menu_item_id, extra_ids = [], note = null } = req.body;
 
   if (!person_name || !menu_item_id) {
     return res.status(400).json({ error: 'person_name and menu_item_id required' });
+  }
+
+  if (note && note.length > 200) {
+    return res.status(400).json({ error: 'note must be 200 characters or less' });
   }
 
   const isLocked = db.prepare('SELECT is_locked FROM daily_menu WHERE date = ? LIMIT 1').get(today)?.is_locked === 1;
@@ -53,8 +58,8 @@ ordersRouter.post('/', (req, res) => {
 
     // Create main dish order
     const { lastInsertRowid: mainOrderId } = db.prepare(
-      'INSERT INTO orders (person_name, menu_item_id, date) VALUES (?, ?, ?)'
-    ).run(person_name, menu_item_id, today);
+      'INSERT INTO orders (person_name, menu_item_id, date, note) VALUES (?, ?, ?, ?)'
+    ).run(person_name, menu_item_id, today, note || null);
     orderIds.push(mainOrderId);
 
     // Create separate order for each extra item
@@ -72,7 +77,7 @@ ordersRouter.post('/', (req, res) => {
 
   // Get all orders for this person
   const orders = db.prepare(`
-    SELECT o.id, o.person_name, mi.name as item_name, mi.price, mi.category
+    SELECT o.id, o.person_name, o.note, mi.name as item_name, mi.price, mi.category
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
     WHERE o.person_name = ? AND o.date = ?
@@ -118,6 +123,93 @@ ordersRouter.get('/confirmation', (req, res) => {
   });
 });
 
+function getWeekDateRange(week, year) {
+  const jan4 = new Date(year, 0, 4);
+  const dayOfWeek = jan4.getDay() || 7;
+  const monday = new Date(jan4);
+  monday.setDate(jan4.getDate() - (dayOfWeek - 1) + (week - 1) * 7);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  return { start: monday.toISOString().slice(0, 10), end: sunday.toISOString().slice(0, 10) };
+}
+
+// GET /api/orders/week?week=X&year=Y
+ordersRouter.get('/week', (req, res) => {
+  const db = getDb();
+  const week = parseInt(req.query.week) || getWeekNumber(new Date().toISOString().slice(0, 10));
+  const year = parseInt(req.query.year) || new Date().getFullYear();
+
+  const { start, end } = getWeekDateRange(week, year);
+
+  const weekOrders = db.prepare(`
+    SELECT o.id, o.person_name, o.date, o.note, mi.name as item_name, mi.price
+    FROM orders o
+    JOIN menu_items mi ON mi.id = o.menu_item_id
+    WHERE o.date BETWEEN ? AND ?
+    ORDER BY o.date, o.person_name, o.id
+  `).all(start, end);
+
+  if (weekOrders.length === 0) {
+    return res.json({ week, year, days: [] });
+  }
+
+  // Query exclusions for these dates
+  const dates = [...new Set(weekOrders.map(o => o.date))];
+  const exclusions = db.prepare(`
+    SELECT person_name, date FROM day_exclusions
+    WHERE date IN (${dates.map(() => '?').join(',')})
+  `).all(...dates);
+
+  const exclusionSet = new Set(exclusions.map(e => `${e.person_name}|${e.date}`));
+
+  // Query payments for this week
+  const payments = db.prepare(`
+    SELECT person_name, status, paid_at FROM payments
+    WHERE week_number = ? AND year = ?
+  `).all(week, year);
+
+  const paymentMap = new Map(payments.map(p => [p.person_name, { status: p.status, paid_at: p.paid_at }]));
+
+  // Group by date → people
+  const dayMap = new Map();
+
+  for (const order of weekOrders) {
+    if (!dayMap.has(order.date)) {
+      dayMap.set(order.date, new Map());
+    }
+    const peopleMap = dayMap.get(order.date);
+
+    if (!peopleMap.has(order.person_name)) {
+      const payment = paymentMap.get(order.person_name);
+      peopleMap.set(order.person_name, {
+        person_name: order.person_name,
+        subtotal: 0,
+        excluded: exclusionSet.has(`${order.person_name}|${order.date}`),
+        week_status: payment?.status ?? 'pending',
+        week_paid_at: payment?.paid_at ?? null,
+        orders: [],
+      });
+    }
+
+    const person = peopleMap.get(order.person_name);
+    person.orders.push({ id: order.id, item_name: order.item_name, price: order.price, note: order.note });
+
+    if (!person.excluded) {
+      person.subtotal += order.price;
+    }
+  }
+
+  const days = [...dayMap.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, peopleMap]) => {
+      const people = [...peopleMap.values()].sort((a, b) => a.person_name.localeCompare(b.person_name));
+      const day_total = people.reduce((sum, p) => sum + p.subtotal, 0);
+      return { date, day_total, people };
+    });
+
+  res.json({ week, year, days });
+});
+
 // PUT /api/orders/:id - admin override order
 ordersRouter.put('/:id', (req, res) => {
   const db = getDb();
@@ -157,6 +249,30 @@ ordersRouter.put('/:id', (req, res) => {
 
   broadcast('order_submitted', { order, date: existing.date });
   res.json(order);
+});
+
+// DELETE /api/orders/today/:person - user cancel their own order
+ordersRouter.delete('/today/:person', (req, res) => {
+  const db = getDb();
+  const today = new Date().toISOString().slice(0, 10);
+  const person_name = decodeURIComponent(req.params.person);
+
+  const isLocked = db.prepare('SELECT is_locked FROM daily_menu WHERE date = ? LIMIT 1').get(today)?.is_locked === 1;
+  if (isLocked) return res.status(409).json({ error: 'Orders are locked for today' });
+
+  const existing = db.prepare('SELECT id FROM orders WHERE person_name = ? AND date = ?').all(person_name, today);
+  if (!existing.length) return res.status(404).json({ error: 'No order found' });
+
+  const cancel = db.transaction(() => {
+    for (const o of existing) {
+      db.prepare('DELETE FROM order_addons WHERE order_id = ?').run(o.id);
+      db.prepare('DELETE FROM orders WHERE id = ?').run(o.id);
+    }
+  });
+  cancel();
+
+  broadcast('order_cancelled', { person_name, date: today });
+  res.json({ cancelled: true, person_name });
 });
 
 // DELETE /api/orders/:id - admin delete order

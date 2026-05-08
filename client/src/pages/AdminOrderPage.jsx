@@ -102,27 +102,27 @@ export function AdminOrderPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 22px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--header-pad)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>Order hôm nay</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-light)' }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-light)' }}>
             {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
           </div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {menu.is_locked
-            ? <span style={{ background: 'var(--color-primary-light)', color: '#e11d48', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>🔒 Đã chốt</span>
-            : <span style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', color: 'var(--color-secondary)', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>⏳ Đang mở</span>
+            ? <span style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>Đã chốt</span>
+            : <span style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', color: 'var(--color-secondary)', padding: '5px 13px', borderRadius: 'var(--radius-pill)', fontSize: 12, fontWeight: 700 }}>Đang mở</span>
           }
           {!menu.is_locked && (
-            <button onClick={handleLock} style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'linear-gradient(135deg,#fca5a5,#f472b6)', color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-              🔒 Chốt đơn
+            <button onClick={handleLock} style={{ padding: '7px 14px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'var(--gradient-primary)', color: '#fff', fontSize: 12, fontWeight: 700, transition: 'all var(--transition-fast)' }}>
+              Chốt đơn
             </button>
           )}
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 280px', gap: 14, alignContent: 'start' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--content-pad-v) var(--content-pad-h)', display: 'grid', gridTemplateColumns: '1fr var(--content-right-col)', gap: 'var(--content-gap)', alignContent: 'start' }}>
         <div>
           <ConfirmBanner confirmedAt={confirmation.confirmed_at} confirmedBy={confirmation.confirmed_by} />
           <NameSelector names={allNames} selected={selectedName} onSelect={setSelectedName} />
@@ -136,23 +136,24 @@ export function AdminOrderPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-lg)', padding: 14, boxShadow: 'var(--shadow-card)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 10 }}>Order của bạn</div>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 10 }}>Order của bạn</div>
             <div style={{ background: 'linear-gradient(135deg, var(--color-primary-light), var(--color-secondary-light))', borderRadius: 'var(--radius-md)', padding: 14, marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: 'var(--color-secondary)', fontWeight: 700, marginBottom: 4 }}>ĐANG CHỌN</div>
+              <div style={{ fontSize: 11, color: 'var(--color-secondary)', fontWeight: 700, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Đang chọn</div>
               {selectedItem || extraItems.length > 0
                 ? <>
                     {selectedItem && <div style={{ fontSize: 13, fontWeight: 700 }}>{selectedItem.name}</div>}
-                    {extraItems.length > 0 && <div style={{ fontSize: 11, color: '#06b6d4', marginTop: 2 }}>+ {extraItems.map(e => e.name).join(', ')}</div>}
+                    {extraItems.length > 0 && <div style={{ fontSize: 12, color: '#0891b2', marginTop: 2 }}>+ {extraItems.map(e => e.name).join(', ')}</div>}
                     <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{(totalPrice / 1000).toFixed(0)},000đ</div>
                   </>
                 : <div style={{ fontSize: 13, color: 'var(--color-text-light)', margin: '8px 0 12px' }}>Chưa chọn món</div>
               }
               <button onClick={handleSubmit} disabled={!selectedName || !selectedItemId || submitting || menu.is_locked} style={{
                 width: '100%', padding: 11, borderRadius: 'var(--radius-md)', border: 'none',
-                background: selectedName && selectedItemId && !menu.is_locked ? 'var(--gradient-primary)' : '#e0d6f0',
+                background: selectedName && selectedItemId && !menu.is_locked ? 'var(--gradient-primary)' : 'var(--color-border)',
                 color: selectedName && selectedItemId && !menu.is_locked ? '#fff' : 'var(--color-text-light)',
-                fontSize: 13, fontWeight: 700, cursor: selectedName && selectedItemId && !menu.is_locked ? 'pointer' : 'not-allowed',
-                boxShadow: selectedName && selectedItemId ? 'var(--shadow-button)' : 'none',
+                fontSize: 13, fontWeight: 700,
+                boxShadow: selectedName && selectedItemId && !menu.is_locked ? 'var(--shadow-button)' : 'none',
+                transition: 'all var(--transition-fast)',
               }}>
                 {submitting ? 'Đang lưu...' : 'Xác nhận order ✓'}
               </button>
@@ -160,7 +161,7 @@ export function AdminOrderPage() {
           </div>
 
           <div style={{ background: 'var(--color-card)', borderRadius: 'var(--radius-lg)', padding: 14, boxShadow: 'var(--shadow-card)' }}>
-            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 10 }}>
               Đã order ({orders.length}/{allNames.length || '?'})
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -171,7 +172,7 @@ export function AdminOrderPage() {
                   cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4,
                 }}>
                   {o.person_name} ✓
-                  <span style={{ fontSize: 10, opacity: 0.7 }}>✏️</span>
+                  <span style={{ fontSize: 11, opacity: 0.7 }}>✏</span>
                 </span>
               ))}
             </div>

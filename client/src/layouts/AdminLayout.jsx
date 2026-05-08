@@ -6,7 +6,6 @@ export function AdminLayout() {
   return (
     <div style={{
       display: 'flex', height: '100vh', background: 'var(--color-card)',
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
       color: 'var(--color-text)', overflow: 'hidden',
     }}>
       <AdminSidebar />
