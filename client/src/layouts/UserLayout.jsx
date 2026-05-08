@@ -5,12 +5,13 @@ import { UserSidebar } from '../components/UserSidebar.jsx';
 export function UserLayout() {
   return (
     <div style={{
-      display: 'flex', height: '100vh', background: 'var(--color-card)',
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+      display: 'flex', height: '100dvh', background: 'var(--color-card)',
       color: 'var(--color-text)', overflow: 'hidden',
     }}>
-      <UserSidebar />
-      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)' }}>
+      <div style={{ display: 'var(--sidebar-display, flex)', flexShrink: 0 }}>
+        <UserSidebar />
+      </div>
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'var(--color-bg)', minWidth: 0 }}>
         <Outlet />
       </main>
     </div>

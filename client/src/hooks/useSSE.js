@@ -1,13 +1,15 @@
-// client/src/hooks/useSSE.js
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 export function useSSE(handlers) {
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
   useEffect(() => {
     const es = new EventSource('/api/events');
-    const subs = Object.entries(handlers).map(([event, handler]) => {
-      es.addEventListener(event, (e) => handler(JSON.parse(e.data)));
-      return event;
+    const entries = Object.keys(handlersRef.current);
+    entries.forEach(event => {
+      es.addEventListener(event, (e) => handlersRef.current[event]?.(JSON.parse(e.data)));
     });
     return () => es.close();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 }

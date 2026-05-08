@@ -6,6 +6,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 3001,
+      // Secrets loaded from .env file — never hardcode here
     },
     watch: false,
     max_memory_restart: '200M',

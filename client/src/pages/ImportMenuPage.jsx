@@ -38,17 +38,17 @@ export function ImportMenuPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 22px', borderBottom: '1px solid #f5f0fb', background: '#fff', flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--header-pad)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>Import Menu</div>
-          <div style={{ fontSize: 11, color: '#aaa' }}>Dán menu từ Zalo — app tự parse và cập nhật</div>
+          <div style={{ fontSize: 12, color: 'var(--color-text-light)' }}>Dán menu từ Zalo — app tự parse và cập nhật</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignContent: 'start' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--content-pad-v) var(--content-pad-h)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--content-gap)', alignContent: 'start' }}>
         {/* Left: paste area */}
         <div>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#c084fc', marginBottom: 8 }}>Paste menu Zalo</div>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 8 }}>Paste menu Zalo</div>
           <textarea value={text} onChange={e => { setText(e.target.value); setResult(null); setDone(false); }}
             placeholder={'@All\n- Cơm gà mắm tỏi: 35k\n- Cơm sườn: 30k\n+ bì || chả: 5k/phần\n...'}
             style={{ width: '100%', height: 240, borderRadius: 12, border: '1.5px solid #e0d6f0', background: '#fdf8ff', padding: '12px 14px', fontFamily: 'monospace', fontSize: 12, color: '#2d2d3a', resize: 'none', outline: 'none', lineHeight: 1.7 }}
@@ -64,7 +64,7 @@ export function ImportMenuPage() {
 
         {/* Right: diff result */}
         <div style={{ background: '#fff', borderRadius: 14, padding: 16, boxShadow: '0 2px 8px rgba(180,140,220,0.07)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: '#c084fc', marginBottom: 14 }}>Thay đổi hôm nay</div>
+          <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--color-secondary)', marginBottom: 14 }}>Thay đổi hôm nay</div>
 
           {!result && <div style={{ color: '#bbb', fontSize: 13, textAlign: 'center', marginTop: 40 }}>Paste menu và bấm Phân tích để xem thay đổi</div>}
 

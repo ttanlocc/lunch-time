@@ -1,8 +1,55 @@
 // client/src/pages/SummaryPage.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { useSSE } from '../hooks/useSSE.js';
 import { ConfirmBanner } from '../components/ConfirmBanner.jsx';
+
+function PaymentToast({ toasts, onRemove }) {
+  if (!toasts.length) return null;
+  return (
+    <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 999, display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none' }}>
+      <style>{`
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateX(40px) scale(0.95); }
+          to   { opacity: 1; transform: translateX(0) scale(1); }
+        }
+        @keyframes toastPop {
+          0%   { transform: scale(1); }
+          40%  { transform: scale(1.06); }
+          100% { transform: scale(1); }
+        }
+      `}</style>
+      {toasts.map(t => (
+        <div key={t.id} style={{
+          background: 'linear-gradient(135deg,#d1fae5,#a7f3d0)',
+          border: '1.5px solid #6ee7b7',
+          borderRadius: 16,
+          padding: '12px 18px',
+          boxShadow: '0 8px 24px rgba(16,185,129,0.25)',
+          display: 'flex', alignItems: 'center', gap: 12,
+          animation: 'toastSlideIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275) both',
+          minWidth: 240, pointerEvents: 'auto',
+        }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: '50%',
+            background: 'linear-gradient(135deg,#6ee7b7,#10b981)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 18, flexShrink: 0,
+            animation: 'toastPop 0.5s 0.15s cubic-bezier(0.175,0.885,0.32,1.275) both',
+          }}>✓</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 800, color: '#065f46' }}>
+              {t.person_name} đã thanh toán
+            </div>
+            <div style={{ fontSize: 12, color: '#059669', marginTop: 2 }}>
+              {t.amount ? `${(t.amount / 1000).toFixed(0)}k qua SePay` : 'Thanh toán thành công'}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function buildZaloText(orders, date) {
   const groups = {};
@@ -29,24 +76,34 @@ export function SummaryPage({ isAdmin = false }) {
   const [data, setData] = useState({ orders: [], is_locked: false, date: '' });
   const [confirmation, setConfirmation] = useState({ confirmed_at: null, confirmed_by: null });
   const [copyPerson, setCopyPerson] = useState('');
+  const [toasts, setToasts] = useState([]);
+  const toastIdRef = useRef(0);
 
   useEffect(() => {
     api.getOrdersToday().then(setData);
     api.getConfirmation().then(setConfirmation);
   }, []);
 
+  function addPaymentToast(person_name, amount) {
+    const id = ++toastIdRef.current;
+    setToasts(ts => [...ts, { id, person_name, amount }]);
+    setTimeout(() => setToasts(ts => ts.filter(t => t.id !== id)), 4500);
+  }
+
   useSSE({
     order_submitted: () => api.getOrdersToday().then(setData),
     order_locked: () => setData(d => ({ ...d, is_locked: true })),
     order_confirmed: (c) => setConfirmation(c),
+    payment_confirmed: ({ person_name, amount }) => addPaymentToast(person_name, amount),
   });
 
   const groups = {};
   for (const o of data.orders) {
     const key = o.addon_names ? `${o.item_name}+${o.addon_names}` : o.item_name;
-    if (!groups[key]) groups[key] = { label: o.addon_names ? `${o.item_name} + ${o.addon_names}` : o.item_name, people: [], total: 0 };
+    if (!groups[key]) groups[key] = { label: o.addon_names ? `${o.item_name} + ${o.addon_names}` : o.item_name, people: [], total: 0, notes: [] };
     groups[key].people.push(o.person_name);
     groups[key].total += o.price || 0;
+    if (o.note && o.category !== 'extra') groups[key].notes.push({ person: o.person_name, note: o.note });
   }
   const groupList = Object.values(groups);
   const grandTotal = data.orders.reduce((sum, o) => sum + (o.price || 0), 0);
@@ -63,7 +120,8 @@ export function SummaryPage({ isAdmin = false }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 22px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
+      <PaymentToast toasts={toasts} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 'var(--header-pad)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700 }}>Tổng hợp đơn</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-light)' }}>{data.orders.length} người đã order</div>
@@ -78,7 +136,7 @@ export function SummaryPage({ isAdmin = false }) {
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px', display: 'grid', gridTemplateColumns: '1fr 260px', gap: 14, alignContent: 'start' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 'var(--content-pad-v) var(--content-pad-h)', display: 'grid', gridTemplateColumns: '1fr var(--content-right-col)', gap: 'var(--content-gap)', alignContent: 'start' }}>
         <div>
           <ConfirmBanner confirmedAt={confirmation.confirmed_at} confirmedBy={confirmation.confirmed_by} />
 
@@ -92,11 +150,18 @@ export function SummaryPage({ isAdmin = false }) {
           </div>
 
           {groupList.map((g, i) => (
-            <div key={g.label} style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-card)', marginBottom: 7, boxShadow: 'var(--shadow-card)', gap: 10 }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: DOT_COLORS[i % DOT_COLORS.length], flexShrink: 0 }} />
-              <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{g.label}</div>
-              <div style={{ fontSize: 11, color: 'var(--color-text-light)' }}>{g.people.join(', ')} · ×{g.people.length}</div>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>{(g.total / 1000).toFixed(0)}k</div>
+            <div key={g.label} style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--color-card)', marginBottom: 7, boxShadow: 'var(--shadow-card)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 9, height: 9, borderRadius: '50%', background: DOT_COLORS[i % DOT_COLORS.length], flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 600 }}>{g.label}</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-light)' }}>{g.people.join(', ')} · ×{g.people.length}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--color-primary)' }}>{(g.total / 1000).toFixed(0)}k</div>
+              </div>
+              {g.notes?.length > 0 && (
+                <div style={{ marginTop: 5, marginLeft: 19, fontSize: 11, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
+                  {g.notes.map((n, j) => <span key={j} style={{ marginRight: 8 }}>📝 {n.person}: {n.note}</span>)}
+                </div>
+              )}
             </div>
           ))}
 
