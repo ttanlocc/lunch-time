@@ -2,27 +2,50 @@
 import { Router } from 'express';
 import { getDb } from '../db/index.js';
 import { broadcast } from '../services/sse.js';
-import { getWeekNumber } from '../services/debtCalculator.js';
 import { parseQrCode, levenshtein, extractSenderName } from '../services/qrCode.js';
 
 export const webhookRouter = Router();
 
+// Banking/wallet noise words that get appended after the name (no separator)
+// e.g. MoMo: "Lunch Nguyen CHUYEN TIEN OQCH... MOMO...". Cut the name here.
+const NAME_STOP_WORDS = new Set([
+  'chuyen', 'tien', 'ct', 'ck', 'momo', 'ft', 'tt', 'thanh', 'toan',
+  'noi', 'dung', 'nhan', 'tu', 'toi', 'trace', 'nd', 'gd',
+]);
+
+// Drop trailing banking-noise tokens from a captured name.
+function trimNoiseFromName(raw) {
+  const words = raw.trim().split(/\s+/);
+  const kept = [];
+  for (const w of words) {
+    const norm = w
+      .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    if (NAME_STOP_WORDS.has(norm)) break;
+    kept.push(w);
+  }
+  return kept.join(' ');
+}
+
+function toTitleCase(name) {
+  return name.trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+}
+
 export function parseSePayContent(content) {
   if (!content) return null;
   // Pattern 1: "Lunch Tuan 16 Khoa" — pay specific week
-  // Stop name at first non-letter/space char (e.g. "." appended by bank)
   const weekMatch = content.match(/lunch\s+tuan\s+(\d+)\s+([a-zA-ZÀ-ỹ]+(?:\s+[a-zA-ZÀ-ỹ]+)*)/i);
   if (weekMatch) {
     const week = parseInt(weekMatch[1]);
-    const personName = weekMatch[2].trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-    return { week, personName };
+    const personName = toTitleCase(trimNoiseFromName(weekMatch[2]));
+    if (personName) return { week, personName };
   }
   // Pattern 2: "Lunch Khoa" — pay all unpaid weeks
-  // Stop at first non-letter/space char so banks appending ".CT tu..." don't break matching
   const allMatch = content.match(/lunch\s+([a-zA-ZÀ-ỹ]+(?:\s+[a-zA-ZÀ-ỹ]+)*)/i);
   if (allMatch) {
-    const personName = allMatch[1].trim().toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
-    return { week: null, personName };
+    const personName = toTitleCase(trimNoiseFromName(allMatch[1]));
+    if (personName) return { week: null, personName };
   }
   return null;
 }
@@ -37,50 +60,49 @@ function resolveCanonicalName(db, parsedName) {
 
   const allNames = db.prepare(`SELECT DISTINCT person_name FROM orders`).all().map(r => r.person_name);
 
-  const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const norm = s => s.replace(/[\u0110]/g, 'D').replace(/[\u0111]/g, 'd').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const normParsed = norm(parsedName);
   const accentMatch = allNames.find(n => norm(n) === normParsed);
   if (accentMatch) return accentMatch;
 
-  const fuzzy = allNames.find(n => levenshtein(normParsed, norm(n)) <= 2);
-  if (fuzzy) return fuzzy;
+  let bestName = null, bestDist = Infinity;
+  for (const n of allNames) {
+    const d = levenshtein(normParsed, norm(n));
+    if (d < bestDist) { bestDist = d; bestName = n; }
+  }
+  if (bestDist <= 2) return bestName;
 
   return null;
 }
 
-function getUnpaidWeeks(db, personName) {
+function getUnpaidDays(db, personName) {
   const orders = db.prepare(`
     SELECT o.date,
-           mi.price + COALESCE(SUM(ma.price), 0) as total_price
+           mi.price + COALESCE(ma_sum.total, 0) as total_price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN order_addons oa ON oa.order_id = o.id
-    LEFT JOIN menu_addons ma ON ma.id = oa.addon_id
+    LEFT JOIN (
+      SELECT oa.order_id, SUM(ma.price) as total
+      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
+      GROUP BY oa.order_id
+    ) ma_sum ON ma_sum.order_id = o.id
     WHERE lower(o.person_name) = lower(?)
-    GROUP BY o.id
   `).all(personName);
 
-  const exclusions = db.prepare(
-    `SELECT date FROM day_exclusions WHERE lower(person_name) = lower(?)`
-  ).all(personName);
-  const excludedDates = new Set(exclusions.map(e => e.date));
+  const excludedDates = new Set(
+    db.prepare('SELECT date FROM day_exclusions WHERE lower(person_name) = lower(?)').all(personName).map(e => e.date)
+  );
+  const paidDates = new Set(
+    db.prepare("SELECT date FROM payments WHERE lower(person_name) = lower(?) AND status='paid'").all(personName).map(p => p.date)
+  );
 
-  const weekMap = {};
+  const dayMap = {};
   for (const o of orders) {
-    if (excludedDates.has(o.date)) continue;
-    const week = getWeekNumber(o.date);
-    const year = new Date(o.date).getFullYear();
-    const key = `${week}|${year}`;
-    if (!weekMap[key]) weekMap[key] = { week, year, amount: 0 };
-    weekMap[key].amount += o.total_price;
+    if (excludedDates.has(o.date) || paidDates.has(o.date)) continue;
+    dayMap[o.date] = (dayMap[o.date] || 0) + o.total_price;
   }
 
-  const payments = db.prepare(
-    `SELECT week_number, year FROM payments WHERE lower(person_name) = lower(?) AND status = 'paid'`
-  ).all(personName);
-  const paidSet = new Set(payments.map(p => `${p.week_number}|${p.year}`));
-
-  return Object.values(weekMap).filter(w => w.amount > 0 && !paidSet.has(`${w.week}|${w.year}`));
+  return Object.entries(dayMap).filter(([, amount]) => amount > 0).map(([date, amount]) => ({ date, amount }));
 }
 
 function logWebhookEvent(db, { sepayId, rawContent, transferAmount, sepayRef }) {
@@ -110,14 +132,15 @@ webhookRouter.post('/sepay', (req, res) => {
   // ── Layer 1: QR code match ─────────────────────────────────────
   const qrParsed = parseQrCode(rawText);
   if (qrParsed) {
-    const payment = db.prepare(`SELECT * FROM payments WHERE qr_code = ?`).get(qrParsed.qrCode);
+    const payment = db.prepare(`SELECT * FROM payments WHERE qr_code = ? LIMIT 1`).get(qrParsed.qrCode);
     if (payment) {
       const eventId = logWebhookEvent(db, eventParams);
       db.prepare(`
-        UPDATE payments SET status = 'paid', sepay_ref = ?, paid_at = ?, match_method = 'qr_code' WHERE id = ?
-      `).run(referenceCode ?? null, paidAt, payment.id);
-      db.prepare(`UPDATE webhook_events SET status = 'matched', matched_payment_id = ? WHERE id = ?`).run(payment.id, eventId);
-      broadcast('payment_confirmed', { person_name: payment.person_name, week: payment.week_number, year: payment.year, amount: transferAmount });
+        UPDATE payments SET status='paid', sepay_ref=?, paid_at=?, match_method='qr_code'
+        WHERE qr_code=? AND status='pending'
+      `).run(referenceCode ?? null, paidAt, qrParsed.qrCode);
+      db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(payment.id, eventId);
+      broadcast('payment_confirmed', { person_name: payment.person_name, amount: transferAmount });
       return res.json({ success: true, method: 'qr_code' });
     }
   }
@@ -132,31 +155,31 @@ webhookRouter.post('/sepay', (req, res) => {
   }
 
   if (canonicalName) {
-    const unpaidWeeks = getUnpaidWeeks(db, canonicalName);
-    const unpaidTotal = unpaidWeeks.reduce((s, w) => s + w.amount, 0);
+    const unpaidDays = getUnpaidDays(db, canonicalName);
+    const unpaidTotal = unpaidDays.reduce((s, d) => s + d.amount, 0);
     const amountOk = unpaidTotal > 0 && transferAmount === unpaidTotal;
 
     if (amountOk) {
       const eventId = logWebhookEvent(db, eventParams);
       const upsert = db.prepare(`
-        INSERT INTO payments (person_name, week_number, year, amount, status, sepay_ref, paid_at, match_method)
-        VALUES (@person_name, @week_number, @year, @amount, 'paid', @sepay_ref, @paid_at, 'fuzzy_name')
-        ON CONFLICT(person_name, week_number, year)
+        INSERT INTO payments (person_name, date, amount, status, sepay_ref, paid_at, match_method)
+        VALUES (@person_name, @date, @amount, 'paid', @sepay_ref, @paid_at, 'fuzzy_name')
+        ON CONFLICT(person_name, date)
         DO UPDATE SET status='paid', sepay_ref=@sepay_ref, paid_at=@paid_at, amount=@amount, match_method='fuzzy_name'
       `);
       db.transaction(() => {
-        for (const w of unpaidWeeks) {
-          upsert.run({ person_name: canonicalName, week_number: w.week, year: w.year, amount: w.amount, sepay_ref: referenceCode ?? null, paid_at: paidAt });
+        for (const d of unpaidDays) {
+          upsert.run({ person_name: canonicalName, date: d.date, amount: d.amount, sepay_ref: referenceCode ?? null, paid_at: paidAt });
         }
       })();
-      db.prepare(`UPDATE webhook_events SET status = 'matched' WHERE id = ?`).run(eventId);
-      broadcast('payment_confirmed', { person_name: canonicalName, week: null, year: null, amount: transferAmount, all_weeks: unpaidWeeks });
+      db.prepare(`UPDATE webhook_events SET status='matched' WHERE id=?`).run(eventId);
+      broadcast('payment_confirmed', { person_name: canonicalName, amount: transferAmount });
       return res.json({ success: true, method: 'fuzzy_name' });
     }
 
     // Name found but amount mismatch → queue with suggestion
     const eventId = logWebhookEvent(db, eventParams);
-    db.prepare(`UPDATE webhook_events SET notes = ? WHERE id = ?`).run(
+    db.prepare(`UPDATE webhook_events SET notes=? WHERE id=?`).run(
       JSON.stringify({ suggested_person: canonicalName, unpaid_total: unpaidTotal }),
       eventId
     );
@@ -209,21 +232,26 @@ webhookRouter.post('/unmatched/:id/resolve', (req, res) => {
   }
 
   if (action === 'assign') {
-    if (!person_name || !week || !year) return res.status(400).json({ error: 'invalid_params' });
+    if (!person_name) return res.status(400).json({ error: 'invalid_params' });
     const paidAt = new Date().toISOString();
-    db.prepare(`
-      INSERT INTO payments (person_name, week_number, year, amount, status, sepay_ref, paid_at, match_method)
-      VALUES (@person_name, @week_number, @year, @amount, 'paid', @sepay_ref, @paid_at, 'manual')
-      ON CONFLICT(person_name, week_number, year)
+    const unpaidDays = getUnpaidDays(db, person_name);
+    if (!unpaidDays.length) return res.status(400).json({ error: 'no_unpaid_days' });
+
+    const upsert = db.prepare(`
+      INSERT INTO payments (person_name, date, amount, status, sepay_ref, paid_at, match_method)
+      VALUES (@person_name, @date, @amount, 'paid', @sepay_ref, @paid_at, 'manual')
+      ON CONFLICT(person_name, date)
       DO UPDATE SET status='paid', sepay_ref=@sepay_ref, paid_at=@paid_at, amount=@amount, match_method='manual'
-    `).run({ person_name, week_number: parseInt(week), year: parseInt(year), amount: evt.transfer_amount || 0, sepay_ref: evt.sepay_ref, paid_at: paidAt });
+    `);
+    db.transaction(() => {
+      for (const d of unpaidDays) {
+        upsert.run({ person_name, date: d.date, amount: d.amount, sepay_ref: evt.sepay_ref, paid_at: paidAt });
+      }
+    })();
 
-    const matched = db.prepare(
-      `SELECT id FROM payments WHERE person_name = ? AND week_number = ? AND year = ?`
-    ).get(person_name, parseInt(week), parseInt(year));
-
-    db.prepare(`UPDATE webhook_events SET status = 'matched', matched_payment_id = ? WHERE id = ?`).run(matched?.id ?? null, evt.id);
-    broadcast('payment_confirmed', { person_name, week: parseInt(week), year: parseInt(year), amount: evt.transfer_amount });
+    const matched = db.prepare(`SELECT id FROM payments WHERE person_name=? ORDER BY id DESC LIMIT 1`).get(person_name);
+    db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(matched?.id ?? null, evt.id);
+    broadcast('payment_confirmed', { person_name, amount: evt.transfer_amount });
     return res.json({ success: true });
   }
 

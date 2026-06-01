@@ -12,4 +12,13 @@ describe('parseSePayContent', () => {
     expect(parseSePayContent('CHUYEN TIEN THANG 4')).toBeNull();
     expect(parseSePayContent('')).toBeNull();
   });
+
+  it('strips MoMo banking noise appended after the name', () => {
+    expect(parseSePayContent(
+      'NHAN TU 2281072020614 TRACE 602526 ND 131168724024 Lunch Nguyen CHUYEN TIEN OQCH000CWUAr MOMO131168724024MOMO'
+    )).toEqual({ week: null, personName: 'Nguyen' });
+    expect(parseSePayContent(
+      'NHAN TU 2281072020614 TRACE 272961 ND 131167927969 Lunch Giang CHUYEN TIEN OQCH000CWShR MOMO131167927969MOMO'
+    )).toEqual({ week: null, personName: 'Giang' });
+  });
 });
