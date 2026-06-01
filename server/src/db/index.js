@@ -45,13 +45,82 @@ export function getDb() {
 
     // bot_conversation table created via CREATE TABLE IF NOT EXISTS in schema — no column migration needed
 
-    // Migration: add qr_code and match_method to payments
+    // Migration: convert payments from per-week to per-day
     const paymentCols = _db.prepare("PRAGMA table_info(payments)").all().map(c => c.name);
-    if (!paymentCols.includes('qr_code')) {
-      _db.exec('ALTER TABLE payments ADD COLUMN qr_code TEXT');
-    }
-    if (!paymentCols.includes('match_method')) {
-      _db.exec('ALTER TABLE payments ADD COLUMN match_method TEXT');
+    if (paymentCols.includes('week_number')) {
+      const getWeekNum = (dateStr) => {
+        const d = new Date(dateStr);
+        const jan4 = new Date(d.getFullYear(), 0, 4);
+        const startOfWeek1 = new Date(jan4);
+        startOfWeek1.setDate(jan4.getDate() - ((jan4.getDay() + 6) % 7));
+        return Math.floor((d - startOfWeek1) / (7 * 86400000)) + 1;
+      };
+
+      _db.exec(`
+        CREATE TABLE IF NOT EXISTS payments_perday (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          person_name TEXT NOT NULL,
+          date TEXT NOT NULL,
+          amount INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'pending',
+          sepay_ref TEXT,
+          paid_at TEXT,
+          qr_code TEXT,
+          match_method TEXT,
+          UNIQUE(person_name, date)
+        )
+      `);
+
+      const paidPayments = _db.prepare("SELECT * FROM payments WHERE status = 'paid'").all();
+      const insertDay = _db.prepare(`
+        INSERT OR IGNORE INTO payments_perday
+          (person_name, date, amount, status, sepay_ref, paid_at, qr_code, match_method)
+        VALUES (@person_name, @date, @amount, @status, @sepay_ref, @paid_at, @qr_code, @match_method)
+      `);
+
+      _db.transaction(() => {
+        for (const p of paidPayments) {
+          const orderDates = _db.prepare(
+            'SELECT DISTINCT date FROM orders WHERE lower(person_name) = lower(?)'
+          ).all(p.person_name);
+
+          for (const { date } of orderDates) {
+            const week = getWeekNum(date);
+            const year = new Date(date).getFullYear();
+            if (week !== p.week_number || year !== p.year) continue;
+
+            const row = _db.prepare(`
+              SELECT COALESCE(SUM(mi.price + COALESCE(ma_sum.total, 0)), 0) as total
+              FROM orders o
+              JOIN menu_items mi ON mi.id = o.menu_item_id
+              LEFT JOIN (
+                SELECT oa.order_id, SUM(ma.price) as total
+                FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
+                GROUP BY oa.order_id
+              ) ma_sum ON ma_sum.order_id = o.id
+              WHERE lower(o.person_name) = lower(?) AND o.date = ?
+            `).get(p.person_name, date);
+
+            insertDay.run({
+              person_name: p.person_name,
+              date,
+              amount: row?.total ?? 0,
+              status: 'paid',
+              sepay_ref: p.sepay_ref ?? null,
+              paid_at: p.paid_at ?? null,
+              qr_code: p.qr_code ?? null,
+              match_method: p.match_method ?? null,
+            });
+          }
+        }
+
+        _db.exec('DROP TABLE payments');
+        _db.exec('ALTER TABLE payments_perday RENAME TO payments');
+      })();
+    } else {
+      // Ensure new columns exist for installs that already have the new schema but missing cols
+      if (!paymentCols.includes('qr_code')) _db.exec('ALTER TABLE payments ADD COLUMN qr_code TEXT');
+      if (!paymentCols.includes('match_method')) _db.exec('ALTER TABLE payments ADD COLUMN match_method TEXT');
     }
   }
   return _db;

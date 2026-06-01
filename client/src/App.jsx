@@ -1,9 +1,7 @@
 // client/src/App.jsx
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { UserLayout } from './layouts/UserLayout.jsx';
 import { AdminLayout } from './layouts/AdminLayout.jsx';
-import { OrderPage } from './pages/OrderPage.jsx';
-import { ImportMenuPage } from './pages/ImportMenuPage.jsx';
 import { SummaryPage } from './pages/SummaryPage.jsx';
 import { AdminOrderPage } from './pages/AdminOrderPage.jsx';
 import { DebtPage } from './pages/DebtPage.jsx';
@@ -15,10 +13,7 @@ export default function App() {
     <Routes>
       {/* User routes */}
       <Route element={<UserLayout />}>
-        <Route path="/" element={<OrderPage />} />
-        <Route path="/import" element={<ImportMenuPage />} />
-        <Route path="/summary" element={<SummaryPage />} />
-        <Route path="/debt" element={<DebtPage />} />
+        <Route path="/" element={<DebtPage />} />
       </Route>
 
       {/* Admin routes */}
@@ -29,6 +24,8 @@ export default function App() {
         <Route path="/admin/manage" element={<AdminManagePage />} />
         <Route path="/admin/unmatched" element={<UnmatchedPaymentsPage />} />
       </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

@@ -48,14 +48,14 @@ export const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS payments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     person_name TEXT NOT NULL,
-    week_number INTEGER NOT NULL,
-    year INTEGER NOT NULL,
-    amount INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    amount INTEGER NOT NULL DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'pending',
     sepay_ref TEXT,
     paid_at TEXT,
-    -- amount = sum of orders for that person that week (calculated at QR generation time)
-    UNIQUE(person_name, week_number, year)
+    qr_code TEXT,
+    match_method TEXT,
+    UNIQUE(person_name, date)
   );
 
   CREATE TABLE IF NOT EXISTS bot_conversation (

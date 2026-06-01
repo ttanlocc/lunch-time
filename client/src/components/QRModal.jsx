@@ -5,6 +5,7 @@ import { useSSE } from '../hooks/useSSE.js';
 export function QRModal({ person, amount: amountProp, week, year, onClose, onPaid, paid: paidProp = false }) {
   const [qrData, setQrData] = useState(null);
   const [paidInternal, setPaidInternal] = useState(false);
+  const [countdown, setCountdown] = useState(null);
   const paid = paidProp || paidInternal;
 
   const currentYear = year || new Date().getFullYear();
@@ -16,6 +17,18 @@ export function QRModal({ person, amount: amountProp, week, year, onClose, onPai
   const amount = qrData?.amount ?? amountProp ?? 0;
   const qrContent = qrData?.qrCode ?? (week ? `Lunch Tuan ${week} ${person}` : `Lunch ${person}`);
   const qrImageUrl = qrData?.qrImageUrl ?? `https://img.vietqr.io/image/MB-${import.meta.env.VITE_BANK_ACCOUNT ?? ''}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(qrContent)}`;
+
+  useEffect(() => {
+    if (!paid) return;
+    setCountdown(5);
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(interval); onClose?.(); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [paid]);
 
   useSSE({
     payment_confirmed: ({ person_name, week: w, all_weeks }) => {
@@ -35,7 +48,10 @@ export function QRModal({ person, amount: amountProp, week, year, onClose, onPai
           <div style={{ padding: '24px 0 8px' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
             <div style={{ fontSize: 20, fontWeight: 800, color: '#059669', marginBottom: 6 }}>Đã thanh toán!</div>
-            <div style={{ fontSize: 13, color: '#6b7280' }}>SePay đã xác nhận nhận tiền</div>
+            <div style={{ fontSize: 13, color: '#6b7280', marginBottom: 10 }}>SePay đã xác nhận nhận tiền</div>
+            {countdown !== null && (
+              <div style={{ fontSize: 12, color: '#a0aec0' }}>Tự đóng sau {countdown}s</div>
+            )}
           </div>
         ) : (
           <>

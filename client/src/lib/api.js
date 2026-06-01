@@ -20,6 +20,7 @@ export const api = {
   submitOrder: (body) => request('POST', '/orders', body),
   getDebts: (week, year) => request('GET', `/debts?week=${week}&year=${year}`),
   getAccumulatedDebts: () => request('GET', '/debts/accumulated'),
+  getPaidTickets: () => request('GET', '/debts/paid'),
   confirmOrder: (person_name) => request('POST', '/orders/confirm', { person_name }),
   getConfirmation: () => request('GET', '/orders/confirmation'),
   updateOrder: (id, body) => request('PUT', `/orders/${id}`, body),
@@ -29,7 +30,8 @@ export const api = {
   overridePayment: (body) => request('POST', '/debts/override', body),
   excludeDay: (body) => request('POST', '/debts/exclude-day', body),
   getOrdersForWeek: (week, year) => request('GET', `/orders/week?week=${week}&year=${year}`),
-  getPersonQr: (name, week, year) => request('GET', `/debts/person/${encodeURIComponent(name)}/qr?week=${week}&year=${year}`),
+  getOrdersForMonth: (month, year) => request('GET', `/orders/month?month=${month}&year=${year}`),
+  getPersonQr: (name) => request('GET', `/debts/person/${encodeURIComponent(name)}/qr`),
   getUnmatched: () => request('GET', '/webhook/unmatched'),
   resolveUnmatched: (id, body) => request('POST', `/webhook/unmatched/${id}/resolve`, body),
 };

@@ -162,13 +162,13 @@ ordersRouter.get('/week', (req, res) => {
 
   const exclusionSet = new Set(exclusions.map(e => `${e.person_name}|${e.date}`));
 
-  // Query payments for this week
+  // Query payments for this week (per-day schema)
   const payments = db.prepare(`
-    SELECT person_name, status, paid_at FROM payments
-    WHERE week_number = ? AND year = ?
-  `).all(week, year);
+    SELECT person_name, date, status, paid_at FROM payments
+    WHERE date BETWEEN ? AND ?
+  `).all(start, end);
 
-  const paymentMap = new Map(payments.map(p => [p.person_name, { status: p.status, paid_at: p.paid_at }]));
+  const paymentMap = new Map(payments.map(p => [`${p.person_name}|${p.date}`, { status: p.status, paid_at: p.paid_at }]));
 
   // Group by date → people
   const dayMap = new Map();
@@ -180,7 +180,7 @@ ordersRouter.get('/week', (req, res) => {
     const peopleMap = dayMap.get(order.date);
 
     if (!peopleMap.has(order.person_name)) {
-      const payment = paymentMap.get(order.person_name);
+      const payment = paymentMap.get(`${order.person_name}|${order.date}`);
       peopleMap.set(order.person_name, {
         person_name: order.person_name,
         subtotal: 0,
@@ -208,6 +208,68 @@ ordersRouter.get('/week', (req, res) => {
     });
 
   res.json({ week, year, days });
+});
+
+// GET /api/orders/month?month=X&year=Y
+ordersRouter.get('/month', (req, res) => {
+  const db = getDb();
+  const month = parseInt(req.query.month) || (new Date().getMonth() + 1);
+  const year  = parseInt(req.query.year)  || new Date().getFullYear();
+
+  const startDate = `${year}-${String(month).padStart(2,'0')}-01`;
+  const lastDay   = new Date(year, month, 0).getDate();
+  const endDate   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
+
+  const rows = db.prepare(`
+    SELECT o.person_name, o.date, o.note, mi.name as item_name, mi.price
+    FROM orders o
+    JOIN menu_items mi ON mi.id = o.menu_item_id
+    WHERE o.date BETWEEN ? AND ?
+    ORDER BY o.date, o.person_name
+  `).all(startDate, endDate);
+
+  const people = [...new Set(rows.map(r => r.person_name))].sort();
+
+  const dayMap = {};
+  for (const row of rows) {
+    if (!dayMap[row.date]) dayMap[row.date] = {};
+    if (!dayMap[row.date][row.person_name]) {
+      dayMap[row.date][row.person_name] = { name: row.person_name, subtotal: 0, items: [], paid: false };
+    }
+    dayMap[row.date][row.person_name].subtotal += row.price;
+    dayMap[row.date][row.person_name].items.push({
+      item_name: row.item_name,
+      price: row.price,
+      note: row.note,
+    });
+  }
+
+  // Attach payment status: payments are stored per-person per-date
+  const paidMap = new Map(
+    db.prepare(
+      "SELECT person_name, date, paid_at FROM payments WHERE date BETWEEN ? AND ? AND status = 'paid'"
+    ).all(startDate, endDate).map(p => [`${p.person_name}|${p.date}`, p.paid_at])
+  );
+
+  for (const [date, peopleObj] of Object.entries(dayMap)) {
+    for (const person of Object.values(peopleObj)) {
+      const paidAt = paidMap.get(`${person.name}|${date}`);
+      person.paid = paidAt !== undefined;
+      person.paid_at = paidAt ?? null;
+    }
+  }
+
+  const days = {};
+  for (const [date, peopleObj] of Object.entries(dayMap)) {
+    const peopleArr = Object.values(peopleObj);
+    days[date] = {
+      total: peopleArr.reduce((s, p) => s + p.subtotal, 0),
+      count: peopleArr.length,
+      people: peopleArr,
+    };
+  }
+
+  res.json({ month, year, people, days });
 });
 
 // PUT /api/orders/:id - admin override order
