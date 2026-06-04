@@ -4,3 +4,10 @@ client/dist/
 .env
 client/.env
 client/.env.local
+
+# Debug / test artifacts
+.playwright-mcp/
+server/lunch.db
+server/lunch.db-shm
+server/lunch.db-wal
+/*.png
