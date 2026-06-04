@@ -79,8 +79,8 @@ botRouter.post('/', (req, res) => {
           db.prepare('DELETE FROM orders WHERE id = ?').run(o.id);
         }
         db.prepare(
-          'INSERT INTO orders (person_name, menu_item_id, date) VALUES (?, ?, ?)'
-        ).run(personName, menuItemId, today);
+          'INSERT INTO orders (person_name, menu_item_id, date, price) VALUES (?, ?, ?, ?)'
+        ).run(personName, menuItemId, today, menuItem.price ?? 0);
       })();
 
       const updatedOrders = db.prepare(

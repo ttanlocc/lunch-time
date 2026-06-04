@@ -387,7 +387,13 @@ function AccumulatedDebtModal({ debt, onClose, isAdmin, onAllPaid }) {
   useEffect(() => { api.getPersonUnpaidDetail(debt.person_name).then(setDetail); }, [debt.person_name]);
 
   const qrContent  = `Lunch ${slugName(debt.person_name)}`;
-  const qrImageUrl = buildQRUrl(debt.total_amount, qrContent);
+  // Derive total/day-count from the freshly-fetched detail (same payload as the
+  // line items) so the figure can't drift from the cached accumulated value.
+  const amount     = detail?.total_amount ?? debt.total_amount;
+  const dayCount   = detail?.orders_by_date
+    ? detail.orders_by_date.filter(d => !d.excluded).length
+    : debt.unpaid_days.length;
+  const qrImageUrl = buildQRUrl(amount, qrContent);
 
   async function handleMarkAllPaid() {
     setError(''); setLoading(true);
@@ -410,11 +416,11 @@ function AccumulatedDebtModal({ debt, onClose, isAdmin, onAllPaid }) {
               </div>
               <div>
                 <div style={{ fontSize:15, fontWeight:600, color:C.ink }}>{debt.person_name}</div>
-                <div style={{ fontSize:11, color:C.inkMute }}>Tổng nợ · {debt.unpaid_days.length} ngày</div>
+                <div style={{ fontSize:11, color:C.inkMute }}>Tổng nợ · {dayCount} ngày</div>
               </div>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-              <span style={{ fontSize:18, fontWeight:700, color:C.amber }}>{fmt(debt.total_amount)}₫</span>
+              <span style={{ fontSize:18, fontWeight:700, color:C.amber }}>{fmt(amount)}₫</span>
               <button onClick={onClose} style={{ width:28, height:28, borderRadius:'50%', background:C.paperWarm, border:`1px solid ${C.hl}`, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:C.inkMute }}>
                 <X size={14} />
               </button>
@@ -447,7 +453,7 @@ function AccumulatedDebtModal({ debt, onClose, isAdmin, onAllPaid }) {
             </div>
             <div style={{ width:210, flexShrink:0, borderLeft:`1px solid ${C.hl}`, padding:'18px 14px', display:'flex', flexDirection:'column', alignItems:'center', gap:10, background:C.paperWarm }}>
               <img src={qrImageUrl} alt="VietQR" style={{ width:174, height:174, border:`1px solid ${C.hlStrong}`, borderRadius:4, display:'block' }} />
-              <div style={{ fontSize:13, fontWeight:600, color:C.ink, textAlign:'center' }}>{fmt(debt.total_amount)}₫</div>
+              <div style={{ fontSize:13, fontWeight:600, color:C.ink, textAlign:'center' }}>{fmt(amount)}₫</div>
               <button onClick={() => setQrFull(true)} style={{ width:'100%', padding:'8px', borderRadius:4, border:`1px solid ${C.hlStrong}`, background:C.paper, color:C.ink, fontSize:10, letterSpacing:'0.18em', textTransform:'uppercase', fontWeight:600, cursor:'pointer', fontFamily:'inherit' }}>
                 Toàn màn hình ↗
               </button>
@@ -467,7 +473,7 @@ function AccumulatedDebtModal({ debt, onClose, isAdmin, onAllPaid }) {
           )}
         </div>
       </div>
-      {qrFull && <QRModal person={debt.person_name} amount={debt.total_amount} week={null} onClose={() => setQrFull(false)} />}
+      {qrFull && <QRModal person={debt.person_name} amount={amount} week={null} onClose={() => setQrFull(false)} />}
     </>
   );
 }
@@ -481,15 +487,22 @@ function AccInspectorPanel({ debt, isAdmin, onFullScreen, onAllPaid }) {
   const [qrErr, setQrErr]         = useState(false);
   const [detail, setDetail]       = useState(null);
 
-  const amount     = debt.total_amount;
   const qrContent  = `Lunch ${slugName(debt.person_name)}`;
-  const qrImageUrl = buildQRUrl(amount, qrContent);
 
   const nameParts = debt.person_name.trim().split(' ').filter(Boolean);
   const lastName  = nameParts.pop() ?? '';
   const firstName = nameParts.join(' ');
 
-  const days = [...(debt.unpaid_days || [])].sort((a,b) => b.date.localeCompare(a.date));
+  // Single source of truth: the per-day breakdown below is rendered from
+  // `detail` (/unpaid-detail). Derive the headline total + QR amount from that
+  // SAME payload so "Tổng" always equals the sum of the rows shown. Fall back
+  // to the cached accumulated value only while detail is still loading.
+  const detailDays = detail?.orders_by_date ?? null;
+  const amount     = detail?.total_amount ?? debt.total_amount;
+  const dayCount   = detailDays
+    ? detailDays.filter(d => !d.excluded).length
+    : (debt.unpaid_days?.length ?? 0);
+  const qrImageUrl = buildQRUrl(amount, qrContent);
 
   useEffect(() => {
     setQrErr(false); setPassword(''); setError(''); setDetail(null);
@@ -536,7 +549,7 @@ function AccInspectorPanel({ debt, isAdmin, onFullScreen, onAllPaid }) {
               {firstName} <em style={{ fontStyle:'normal', color:C.magentaInk }}>{lastName}</em>
             </h2>
             <div style={{ fontSize:11, color:C.inkMute, marginTop:5 }}>
-              {days.length} ngày chưa thanh toán
+              {dayCount} ngày chưa thanh toán
             </div>
           </div>
         </div>
@@ -573,7 +586,7 @@ function AccInspectorPanel({ debt, isAdmin, onFullScreen, onAllPaid }) {
                 ))}
               </div>
             ))}
-            {days.length > 1 && (
+            {dayCount > 1 && (
               <div style={{ display:'flex', justifyContent:'space-between', paddingTop:8, borderTop:`1px solid ${C.hl}`, fontSize:13, fontWeight:700, color:C.magentaInk }}>
                 <span>Tổng</span>
                 <span style={{ fontFamily:MONO }}>{fmt(amount)}₫</span>
@@ -760,6 +773,12 @@ export function DebtPage({ isAdmin = false }) {
     },
     payment_updated: () => { refresh(); refreshPaid(); },
     debt_updated:    () => { refresh(); },
+    // Meals changing must re-pull the accumulated totals, otherwise the cached
+    // total_amount drifts from the freshly-fetched per-day breakdown.
+    order_submitted: () => { refresh(); },
+    order_confirmed: () => { refresh(); },
+    order_cancelled: () => { refresh(); },
+    order_deleted:   () => { refresh(); },
   });
 
   const totalOwed = debts.reduce((s, d) => s + d.total_amount, 0);
@@ -817,10 +836,10 @@ export function DebtPage({ isAdmin = false }) {
 
       {/* ── Status filter ── */}
       <div style={{ display:'flex', gap:8, padding:'14px 36px 0', flexShrink:0 }}>
-        {[
+        {(isAdmin ? [
           ['active', `● Còn nợ · ${debts.length}`, C.magentaDeep, C.rose],
           ['done',   `✓ Đã trả · ${paidTickets.length}`, C.emeraldDeep, C.sage],
-        ].map(([key, label, fg, bg]) => {
+        ] : []).map(([key, label, fg, bg]) => {
           const on = debtFilter === key;
           return (
             <button key={key} onClick={() => setDebtFilter(key)} style={{

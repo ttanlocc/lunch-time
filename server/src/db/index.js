@@ -31,6 +31,25 @@ export function getDb() {
       _db.exec('ALTER TABLE orders ADD COLUMN note TEXT');
     }
 
+    // Migration: snapshot line price onto each order. Previously every total
+    // re-read the live menu_items.price, so re-importing a dish at a new price
+    // silently rewrote historical debts. Freeze the price per order instead.
+    if (!orderCols.includes('price')) {
+      _db.exec('ALTER TABLE orders ADD COLUMN price INTEGER NOT NULL DEFAULT 0');
+      // Best-effort backfill from current menu price + addon prices. Price drift
+      // that happened before this column existed cannot be recovered.
+      _db.exec(`
+        UPDATE orders SET price = COALESCE((
+          SELECT mi.price + COALESCE((
+            SELECT SUM(ma.price) FROM order_addons oa
+            JOIN menu_addons ma ON ma.id = oa.addon_id
+            WHERE oa.order_id = orders.id
+          ), 0)
+          FROM menu_items mi WHERE mi.id = orders.menu_item_id
+        ), 0)
+      `);
+    }
+
     // Migration: deduplicate menu_addons and add UNIQUE index
     const indexes = _db.prepare("PRAGMA index_list(menu_addons)").all().map(i => i.name);
     if (!indexes.includes('idx_menu_addons_unique')) {

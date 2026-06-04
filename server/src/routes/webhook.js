@@ -77,15 +77,8 @@ function resolveCanonicalName(db, parsedName) {
 
 function getUnpaidDays(db, personName) {
   const orders = db.prepare(`
-    SELECT o.date,
-           mi.price + COALESCE(ma_sum.total, 0) as total_price
+    SELECT o.date, o.price as total_price
     FROM orders o
-    JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN (
-      SELECT oa.order_id, SUM(ma.price) as total
-      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
-      GROUP BY oa.order_id
-    ) ma_sum ON ma_sum.order_id = o.id
     WHERE lower(o.person_name) = lower(?)
   `).all(personName);
 
@@ -134,14 +127,32 @@ webhookRouter.post('/sepay', (req, res) => {
   if (qrParsed) {
     const payment = db.prepare(`SELECT * FROM payments WHERE qr_code = ? LIMIT 1`).get(qrParsed.qrCode);
     if (payment) {
+      // Amount guard: only auto-clear when the transfer matches the total still
+      // pending for this QR. Without this, any transfer carrying the right memo
+      // wipes the whole debt — including underpayments.
+      const expected = db.prepare(
+        `SELECT COALESCE(SUM(amount), 0) AS total FROM payments WHERE qr_code = ? AND status = 'pending'`
+      ).get(qrParsed.qrCode).total;
+
+      if (expected > 0 && transferAmount === expected) {
+        const eventId = logWebhookEvent(db, eventParams);
+        db.prepare(`
+          UPDATE payments SET status='paid', sepay_ref=?, paid_at=?, match_method='qr_code'
+          WHERE qr_code=? AND status='pending'
+        `).run(referenceCode ?? null, paidAt, qrParsed.qrCode);
+        db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(payment.id, eventId);
+        broadcast('payment_confirmed', { person_name: payment.person_name, amount: transferAmount });
+        return res.json({ success: true, method: 'qr_code' });
+      }
+
+      // QR matched but amount is off → queue for manual review (don't auto-clear).
       const eventId = logWebhookEvent(db, eventParams);
-      db.prepare(`
-        UPDATE payments SET status='paid', sepay_ref=?, paid_at=?, match_method='qr_code'
-        WHERE qr_code=? AND status='pending'
-      `).run(referenceCode ?? null, paidAt, qrParsed.qrCode);
-      db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(payment.id, eventId);
-      broadcast('payment_confirmed', { person_name: payment.person_name, amount: transferAmount });
-      return res.json({ success: true, method: 'qr_code' });
+      db.prepare(`UPDATE webhook_events SET notes=? WHERE id=?`).run(
+        JSON.stringify({ suggested_person: payment.person_name, unpaid_total: expected }),
+        eventId
+      );
+      broadcast('payment_queued', { id: eventId, amount: transferAmount });
+      return res.json({ success: false, reason: 'queued_qr_amount_mismatch' });
     }
   }
 

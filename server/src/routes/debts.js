@@ -17,14 +17,8 @@ function getPaidDates(db, personName) {
 
 function getUnpaidDaysForPerson(db, personName) {
   const orders = db.prepare(`
-    SELECT o.date, mi.price + COALESCE(ma_sum.total, 0) as total_price
+    SELECT o.date, o.price as total_price
     FROM orders o
-    JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN (
-      SELECT oa.order_id, SUM(ma.price) as total
-      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
-      GROUP BY oa.order_id
-    ) ma_sum ON ma_sum.order_id = o.id
     WHERE lower(o.person_name) = lower(?)
   `).all(personName);
 
@@ -53,14 +47,9 @@ debtsRouter.get('/', (req, res) => {
   const orders = db.prepare(`
     SELECT o.person_name, o.date, o.note,
            mi.name as item_name,
-           mi.price + COALESCE(ma_sum.total, 0) as total_price
+           o.price as total_price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN (
-      SELECT oa.order_id, SUM(ma.price) as total
-      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
-      GROUP BY oa.order_id
-    ) ma_sum ON ma_sum.order_id = o.id
     ORDER BY o.date, o.id
   `).all();
 
@@ -122,28 +111,24 @@ debtsRouter.get('/accumulated', (req, res) => {
   const db = getDb();
 
   const orders = db.prepare(`
-    SELECT o.person_name, o.date,
-           mi.price + COALESCE(ma_sum.total, 0) as total_price
+    SELECT o.person_name, o.date, o.price as total_price
     FROM orders o
-    JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN (
-      SELECT oa.order_id, SUM(ma.price) as total
-      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
-      GROUP BY oa.order_id
-    ) ma_sum ON ma_sum.order_id = o.id
     ORDER BY o.date
   `).all();
 
+  // Case/whitespace-insensitive key so payment & exclusion rows always line up
+  // with order person_names (other endpoints use lower(...) — match them here).
+  const nkey = (name, date) => `${String(name).trim().toLowerCase()}|${date}`;
   const excludedSet = new Set(
-    db.prepare('SELECT person_name, date FROM day_exclusions').all().map(e => `${e.person_name}|${e.date}`)
+    db.prepare('SELECT person_name, date FROM day_exclusions').all().map(e => nkey(e.person_name, e.date))
   );
   const paidSet = new Set(
-    db.prepare("SELECT person_name, date FROM payments WHERE status='paid'").all().map(p => `${p.person_name}|${p.date}`)
+    db.prepare("SELECT person_name, date FROM payments WHERE status='paid'").all().map(p => nkey(p.person_name, p.date))
   );
 
   const personDayMap = {};
   for (const o of orders) {
-    if (excludedSet.has(`${o.person_name}|${o.date}`) || paidSet.has(`${o.person_name}|${o.date}`)) continue;
+    if (excludedSet.has(nkey(o.person_name, o.date)) || paidSet.has(nkey(o.person_name, o.date))) continue;
     if (!personDayMap[o.person_name]) personDayMap[o.person_name] = {};
     personDayMap[o.person_name][o.date] = (personDayMap[o.person_name][o.date] || 0) + o.total_price;
   }
@@ -212,14 +197,9 @@ debtsRouter.get('/person/:name/unpaid-detail', (req, res) => {
   const orders = db.prepare(`
     SELECT o.date, o.note,
            mi.name as item_name,
-           mi.price + COALESCE(ma_sum.total, 0) as total_price
+           o.price as total_price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
-    LEFT JOIN (
-      SELECT oa.order_id, SUM(ma.price) as total
-      FROM order_addons oa JOIN menu_addons ma ON ma.id = oa.addon_id
-      GROUP BY oa.order_id
-    ) ma_sum ON ma_sum.order_id = o.id
     WHERE lower(o.person_name) = lower(?)
     ORDER BY o.date, o.id
   `).all(person_name);

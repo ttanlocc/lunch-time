@@ -143,7 +143,7 @@ export function AdminOrderPage() {
                 ? <>
                     {selectedItem && <div style={{ fontSize: 13, fontWeight: 700 }}>{selectedItem.name}</div>}
                     {extraItems.length > 0 && <div style={{ fontSize: 12, color: '#0891b2', marginTop: 2 }}>+ {extraItems.map(e => e.name).join(', ')}</div>}
-                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{(totalPrice / 1000).toFixed(0)},000đ</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{Math.round(totalPrice).toLocaleString('en-US')}đ</div>
                   </>
                 : <div style={{ fontSize: 13, color: 'var(--color-text-light)', margin: '8px 0 12px' }}>Chưa chọn món</div>
               }
