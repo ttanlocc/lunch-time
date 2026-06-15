@@ -55,18 +55,20 @@ ordersRouter.post('/', (req, res) => {
     }
 
     const orderIds = [];
+    const priceOf = (id) => db.prepare('SELECT price FROM menu_items WHERE id = ?').get(id)?.price ?? 0;
 
-    // Create main dish order
+    // Create main dish order — snapshot the price so later menu edits can't
+    // retroactively change this debt.
     const { lastInsertRowid: mainOrderId } = db.prepare(
-      'INSERT INTO orders (person_name, menu_item_id, date, note) VALUES (?, ?, ?, ?)'
-    ).run(person_name, menu_item_id, today, note || null);
+      'INSERT INTO orders (person_name, menu_item_id, date, note, price) VALUES (?, ?, ?, ?, ?)'
+    ).run(person_name, menu_item_id, today, note || null, priceOf(menu_item_id));
     orderIds.push(mainOrderId);
 
     // Create separate order for each extra item
     for (const extra_id of extra_ids) {
       const { lastInsertRowid: extraOrderId } = db.prepare(
-        'INSERT INTO orders (person_name, menu_item_id, date) VALUES (?, ?, ?)'
-      ).run(person_name, extra_id, today);
+        'INSERT INTO orders (person_name, menu_item_id, date, price) VALUES (?, ?, ?, ?)'
+      ).run(person_name, extra_id, today, priceOf(extra_id));
       orderIds.push(extraOrderId);
     }
 
@@ -142,7 +144,7 @@ ordersRouter.get('/week', (req, res) => {
   const { start, end } = getWeekDateRange(week, year);
 
   const weekOrders = db.prepare(`
-    SELECT o.id, o.person_name, o.date, o.note, mi.name as item_name, mi.price
+    SELECT o.id, o.person_name, o.date, o.note, mi.name as item_name, o.price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
     WHERE o.date BETWEEN ? AND ?
@@ -221,7 +223,7 @@ ordersRouter.get('/month', (req, res) => {
   const endDate   = `${year}-${String(month).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
 
   const rows = db.prepare(`
-    SELECT o.person_name, o.date, o.note, mi.name as item_name, mi.price
+    SELECT o.person_name, o.date, o.note, mi.name as item_name, o.price
     FROM orders o
     JOIN menu_items mi ON mi.id = o.menu_item_id
     WHERE o.date BETWEEN ? AND ?
@@ -289,11 +291,19 @@ ordersRouter.put('/:id', (req, res) => {
 
   const update = db.transaction(() => {
     db.prepare('DELETE FROM order_addons WHERE order_id = ?').run(id);
-    db.prepare('UPDATE orders SET menu_item_id = ? WHERE id = ?').run(menu_item_id, id);
 
     for (const addon_id of addon_ids) {
       db.prepare('INSERT INTO order_addons (order_id, addon_id) VALUES (?, ?)').run(id, addon_id);
     }
+
+    // Re-snapshot the price for the new item + addon selection.
+    const itemPrice = db.prepare('SELECT price FROM menu_items WHERE id = ?').get(menu_item_id)?.price ?? 0;
+    const addonTotal = addon_ids.length
+      ? db.prepare(
+          `SELECT COALESCE(SUM(price), 0) AS total FROM menu_addons WHERE id IN (${addon_ids.map(() => '?').join(',')})`
+        ).get(...addon_ids).total
+      : 0;
+    db.prepare('UPDATE orders SET menu_item_id = ?, price = ? WHERE id = ?').run(menu_item_id, itemPrice + addonTotal, id);
   });
 
   update();

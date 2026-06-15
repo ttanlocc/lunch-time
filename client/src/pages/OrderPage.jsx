@@ -200,7 +200,7 @@ export function OrderPage() {
                       + {extraItems.map(e => addonQtys[e.id] > 1 ? `${e.name} x${addonQtys[e.id]}` : e.name).join(', ')}
                     </div>
                   )}
-                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{(totalPrice / 1000).toFixed(0)},000đ</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--color-primary)', margin: '6px 0 12px' }}>{Math.round(totalPrice).toLocaleString('en-US')}đ</div>
                 </>
               ) : (
                 <div style={{ fontSize: 13, color: 'var(--color-text-light)', margin: '8px 0 12px' }}>Chưa chọn món</div>

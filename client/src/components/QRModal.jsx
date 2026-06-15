@@ -61,7 +61,7 @@ export function QRModal({ person, amount: amountProp, week, year, onClose, onPai
             ) : (
               <img src={qrImageUrl} alt="VietQR" style={{ width: 200, height: 200, borderRadius: 16, border: '3px solid #ede9fe', display: 'block', margin: '0 auto 16px', boxShadow: '0 4px 16px rgba(180,140,220,0.15)' }} />
             )}
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#ec4899', marginBottom: 6 }}>{(amount / 1000).toFixed(0)},000đ</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#ec4899', marginBottom: 6 }}>{Math.round(amount).toLocaleString('en-US')}đ</div>
             <div style={{ display: 'inline-block', background: '#f5f0fb', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontFamily: 'monospace', color: '#7c6f8e', marginBottom: 16, fontWeight: 600 }}>{qrContent}</div>
             <div style={{ fontSize: 11, color: '#bbb', lineHeight: 1.5 }}>
               Mở app ngân hàng → quét QR<br />

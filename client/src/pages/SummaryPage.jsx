@@ -143,7 +143,7 @@ export function SummaryPage({ isAdmin = false }) {
           <div style={{ background: 'var(--gradient-header)', borderRadius: 'var(--radius-lg)', padding: 18, color: '#fff', marginBottom: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: 12, opacity: 0.85, marginBottom: 3 }}>Tổng hôm nay</div>
-              <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -1 }}>{(grandTotal / 1000).toFixed(0)},000đ</div>
+              <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: -1 }}>{Math.round(grandTotal).toLocaleString('en-US')}đ</div>
               <div style={{ fontSize: 11, opacity: 0.7 }}>{data.orders.length} người · {groupList.length} món</div>
             </div>
             <div style={{ fontSize: 48, opacity: 0.2 }}>💰</div>

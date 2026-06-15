@@ -68,7 +68,7 @@ export default function UnmatchedPaymentsPage() {
           <div key={evt.id} style={{ background: 'var(--color-card)', borderRadius: 12, padding: 16, marginBottom: 12, boxShadow: 'var(--shadow-card)', border: '1px solid rgba(0,0,0,0.06)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>{evt.received_at?.slice(0, 16).replace('T', ' ')}</span>
-              <span style={{ fontSize: 14, fontWeight: 800, color: '#059669' }}>{(evt.transfer_amount / 1000).toFixed(0)},000đ</span>
+              <span style={{ fontSize: 14, fontWeight: 800, color: '#059669' }}>{Math.round(evt.transfer_amount).toLocaleString('en-US')}đ</span>
             </div>
             <div style={{ fontSize: 11, color: '#aaa', fontFamily: 'monospace', marginBottom: 10, wordBreak: 'break-all', background: '#f8f8f8', borderRadius: 6, padding: '6px 8px' }}>
               {evt.raw_content?.slice(0, 120)}{evt.raw_content?.length > 120 ? '…' : ''}
@@ -76,7 +76,7 @@ export default function UnmatchedPaymentsPage() {
 
             {evt.suggestion && (
               <div style={{ fontSize: 11, color: '#a855f7', marginBottom: 8 }}>
-                Gợi ý: <strong>{evt.suggestion.person_name}</strong> — còn nợ {(evt.suggestion.unpaid_total / 1000).toFixed(0)},000đ
+                Gợi ý: <strong>{evt.suggestion.person_name}</strong> — còn nợ {Math.round(evt.suggestion.unpaid_total).toLocaleString('en-US')}đ
               </div>
             )}
 
