@@ -42,9 +42,12 @@ const CSS = `
   .prb-bell svg { transform-origin: 50% 18% }
   /* prb-shake is reserved for a real "new notification" event, not for opening the panel. */
   .prb-bell.prb-shake svg { animation: prb-shake .6s ease-in-out }
-  .prb-bell:hover { color:${C.magentaInk} !important; border-color:${C.magenta} !important; background:${C.rose} !important }
+  .prb-bell:hover { filter: brightness(0.97) }
   .prb-save:hover { filter: brightness(1.04) }
   .prb-item:not(:disabled):hover { background:${C.paperWarm} }
+  /* knob slides with a soft overshoot; squishes wider while the row is pressed */
+  .prb-knob { transition: left 230ms cubic-bezier(.34,1.56,.64,1), width 150ms ease }
+  .prb-item:active:not(:disabled) .prb-knob { width: 14px }
   @media (prefers-reduced-motion: reduce) {
     .prb-spin, .prb-bell.prb-shake svg, .prb-knob { animation: none !important; transition: none !important }
   }
@@ -63,13 +66,12 @@ const ROW = {
 function ToggleVisual({ checked }) {
   return (
     <span aria-hidden="true" style={{
-      position:'relative', width:34, height:20, borderRadius:999, flexShrink:0,
+      position:'relative', width:30, height:14, borderRadius:999, flexShrink:0,
       background: checked ? C.magentaInk : C.hlStrong, transition:'background 160ms ease',
     }}>
       <span className="prb-knob" style={{
-        position:'absolute', top:2, left: checked ? 16 : 2, width:16, height:16, borderRadius:'50%',
+        position:'absolute', top:1, left: checked ? 16 : 2, width:12, height:12, borderRadius:'50%',
         background:C.paper, boxShadow:'0 1px 2px rgba(43,34,53,0.28)',
-        transition:'left 160ms cubic-bezier(.2,.8,.2,1)',
       }} />
     </span>
   );
@@ -79,6 +81,26 @@ export default function PersonReminderBell({ personName }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef(null);
   const [pos, setPos] = useState(null);
+  // Whether this person actually receives anything, shown ON THE BELL so you can
+  // tell at a glance without opening the popover. "On" requires the master to be
+  // on AND at least one type on — master on with every type off sends nothing,
+  // so it reads as off. null = still loading.
+  const [enabled, setEnabled] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    api.getPeople().then(r => {
+      if (!alive) return;
+      const me = r.people.find(p => p.name.trim().toLowerCase() === personName.trim().toLowerCase());
+      const sends = me
+        ? me.active !== 0 && (me.notify_weekly !== 0 || me.notify_monthend !== 0 || me.notify_receipt !== 0)
+        : true;
+      setEnabled(sends);
+    }).catch(() => {});
+    return () => { alive = false; };
+  }, [personName]);
+
+  const on = enabled === true;
 
   // Measure the bell and place the popover (fixed) right-aligned beneath it,
   // flipping above when there isn't room below.
@@ -98,15 +120,17 @@ export default function PersonReminderBell({ personName }) {
       <button
         ref={btnRef}
         onClick={() => setOpen(o => !o)}
-        aria-label="Cài đặt thông báo"
+        aria-label={on ? `Thông báo đang bật cho ${personName} — bấm để cài`
+                       : `Thông báo đang tắt cho ${personName} — bấm để cài`}
         aria-expanded={open}
-        title="Cài đặt thông báo"
+        title={on ? 'Thông báo đang bật' : 'Thông báo đang tắt'}
         className="prb-bell"
         style={{
           width:30, height:30, borderRadius:'50%', flexShrink:0,
-          border:`1px solid ${open ? C.magenta : C.hlStrong}`,
-          background: open ? C.rose : C.paper,
-          color: open ? C.magentaInk : C.inkMute,
+          // sending → green bell on a soft green wash; otherwise muted grey
+          border:`1px solid ${on ? 'rgba(91,155,127,0.45)' : C.hlStrong}`,
+          background: on ? C.sage : (open ? C.hl : C.paper),
+          color: on ? C.emeraldDeep : C.inkMute,
           cursor:'pointer', display:'inline-flex', alignItems:'center', justifyContent:'center',
           transition:'all 150ms ease',
         }}
@@ -117,14 +141,14 @@ export default function PersonReminderBell({ personName }) {
         <>
           {/* click-away */}
           <div onClick={() => setOpen(false)} style={{ position:'fixed', inset:0, zIndex:300 }} />
-          <Popover personName={personName} pos={pos} onClose={() => setOpen(false)} />
+          <Popover personName={personName} pos={pos} onClose={() => setOpen(false)} onSaved={setEnabled} />
         </>
       )}
     </>
   );
 }
 
-function Popover({ personName, pos, onClose }) {
+function Popover({ personName, pos, onClose, onSaved }) {
   const [loaded, setLoaded]   = useState(false);
   const [email, setEmail]     = useState('');
   // `enabled` is the master switch (= people.active). It's kept SEPARATE from the
@@ -174,6 +198,7 @@ function Popover({ personName, pos, onClose }) {
         notify_weekly: prefs.weekly, notify_monthend: prefs.monthend, notify_receipt: prefs.receipt,
       });
       setSaved(true);
+      onSaved?.(enabled && anyOn); // bell = actually-sends (master on AND a type on)
       setTimeout(onClose, 850);
     } catch {
       setError('Lưu không được, thử lại nhé.');
