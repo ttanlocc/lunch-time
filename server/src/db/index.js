@@ -141,6 +141,47 @@ export function getDb() {
       if (!paymentCols.includes('qr_code')) _db.exec('ALTER TABLE payments ADD COLUMN qr_code TEXT');
       if (!paymentCols.includes('match_method')) _db.exec('ALTER TABLE payments ADD COLUMN match_method TEXT');
     }
+
+    // Migration: people directory — maps a person_name to a company email so the
+    // Friday debt reminder can DM each debtor. name is the canonical DB person_name.
+    _db.exec(`
+      CREATE TABLE IF NOT EXISTS people (
+        name TEXT PRIMARY KEY,
+        email TEXT,
+        active INTEGER NOT NULL DEFAULT 1,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `);
+    // Per-notification opt-in flags. `active` stays the master "notifications on"
+    // switch; these three gate each individual notification type. Default on so
+    // existing people keep getting everything until they opt a type out.
+    const peopleCols = _db.prepare('PRAGMA table_info(people)').all().map(c => c.name);
+    if (!peopleCols.includes('notify_weekly'))   _db.exec('ALTER TABLE people ADD COLUMN notify_weekly INTEGER NOT NULL DEFAULT 1');
+    if (!peopleCols.includes('notify_monthend')) _db.exec('ALTER TABLE people ADD COLUMN notify_monthend INTEGER NOT NULL DEFAULT 1');
+    if (!peopleCols.includes('notify_receipt'))  _db.exec('ALTER TABLE people ADD COLUMN notify_receipt INTEGER NOT NULL DEFAULT 1');
+
+    // Seed the directory with every name we've ever seen on an order, so the admin
+    // only has to fill in emails rather than retype names. Existing rows are kept.
+    _db.exec(`
+      INSERT OR IGNORE INTO people (name)
+      SELECT DISTINCT person_name FROM orders
+    `);
   }
   return _db;
+}
+
+let _roDb;
+
+// A second connection opened in SQLite's own readonly mode (not just "we
+// promise not to write") — any INSERT/UPDATE/DELETE attempt through it throws
+// SQLITE_READONLY at the engine level. Used to hard-enforce read-only access
+// for the AI analyst's DB tools, independent of what the JS wrapper code does.
+// WAL mode (set in getDb()) allows concurrent readers alongside the writer, so
+// this is safe to hold open for the process lifetime.
+export function getReadonlyDb() {
+  if (!_roDb) {
+    getDb(); // ensure schema/migrations have run and the file exists first
+    _roDb = new Database(DB_PATH, { readonly: true, fileMustExist: true });
+  }
+  return _roDb;
 }

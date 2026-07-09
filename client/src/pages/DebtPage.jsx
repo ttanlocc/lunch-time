@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { api } from '../lib/api.js';
 import { useSSE } from '../hooks/useSSE.js';
 import { QRModal } from '../components/QRModal.jsx';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { HistoryPage } from './HistoryPage.jsx';
+import { InsightsPage } from './InsightsPage.jsx';
+import PersonReminderBell from '../components/PersonReminderBell.jsx';
 
 // ─── Design tokens (exact match to Payment Page.html) ────────────────────────
 const C = {
@@ -90,6 +92,11 @@ const GLOBAL_CSS = `
     from { opacity: 0; transform: translateX(20px); }
     to   { opacity: 1; transform: translateX(0); }
   }
+  @keyframes dtTwinkle {
+    0%, 100% { opacity: .55; transform: scale(.82); }
+    50%      { opacity: 1;   transform: scale(1.15); }
+  }
+  .dt-twinkle { animation: dtTwinkle 1.6s ease-in-out infinite; transform-origin: center; display: inline-flex; }
   .dt-reveal { opacity: 0; transform: translateY(8px); animation: revealIn 600ms cubic-bezier(.2,.8,.2,1) both; }
   .dt-r1 { animation-delay: 80ms; }
   .dt-r2 { animation-delay: 160ms; }
@@ -106,7 +113,32 @@ const GLOBAL_CSS = `
   .dt-main-scroll::-webkit-scrollbar { width: 4px; }
   .dt-main-scroll::-webkit-scrollbar-track { background: transparent; }
   .dt-main-scroll::-webkit-scrollbar-thumb { background: ${C.hlStrong}; border-radius: 2px; }
+  @keyframes saleWiggle {
+    0%, 100% { transform: rotate(-5deg); }
+    50%      { transform: rotate(5deg); }
+  }
+  .dt-sale { animation: saleWiggle 1.5s ease-in-out infinite; transform-origin: 65% 100%; }
 `;
+
+// ─── Sale tag ──────────────────────────────────────────────────────────────────
+// A wiggling little price-tag badge to flag discount lines (order price < 0).
+function SaleTag() {
+  return (
+    <span className="dt-sale" style={{
+      display:'inline-flex', alignItems:'center', gap:3, verticalAlign:'middle',
+      marginLeft:6, padding:'1px 6px 1px 4px', borderRadius:999,
+      background:`linear-gradient(135deg, ${C.magenta}, ${C.magentaDeep})`,
+      color:C.paper, fontSize:8.5, fontWeight:800, letterSpacing:'0.12em',
+      textTransform:'uppercase', boxShadow:'0 1px 4px rgba(196,120,153,0.45)',
+    }}>
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={C.paper} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0l-7.2-7.2A2 2 0 0 1 2.8 12V4.8A2 2 0 0 1 4.8 2.8H12a2 2 0 0 1 1.4.6l7.2 7.2a2 2 0 0 1 0 2.8Z"/>
+        <circle cx="7.5" cy="7.5" r="1.2" fill={C.paper} stroke="none"/>
+      </svg>
+      Sale
+    </span>
+  );
+}
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
 function PaymentSuccessToast({ toasts }) {
@@ -444,8 +476,9 @@ function AccumulatedDebtModal({ debt, onClose, isAdmin, onAllPaid }) {
                       <span style={{ flex:1, marginRight:8 }}>
                         {item.item_name}
                         {item.note && <span style={{ color:C.violet, fontSize:11 }}> [{item.note}]</span>}
+                        {item.price < 0 && <SaleTag />}
                       </span>
-                      <span style={{ flexShrink:0 }}>{fmt(item.price)}</span>
+                      <span style={{ flexShrink:0, color: item.price < 0 ? C.emeraldDeep : undefined, fontWeight: item.price < 0 ? 700 : undefined }}>{fmt(item.price)}</span>
                     </div>
                   ))}
                 </div>
@@ -537,8 +570,11 @@ function AccInspectorPanel({ debt, isAdmin, onFullScreen, onAllPaid }) {
     <>
       {/* head */}
       <div style={{ padding:'22px 26px 18px', borderBottom:`1px solid ${C.hl}`, display:'flex', flexDirection:'column', gap:10, flexShrink:0 }}>
-        <div style={{ fontSize:9, letterSpacing:'0.22em', textTransform:'uppercase', color:C.inkMute, fontWeight:600 }}>
-          Phiếu thanh toán · Tổng dư nợ
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8 }}>
+          <span style={{ fontSize:9, letterSpacing:'0.22em', textTransform:'uppercase', color:C.inkMute, fontWeight:600 }}>
+            Phiếu thanh toán · Tổng dư nợ
+          </span>
+          <PersonReminderBell personName={debt.person_name} />
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:14 }}>
           <div style={{ width:52, height:52, borderRadius:'50%', background:C.rose, color:C.magentaInk, fontWeight:700, fontSize:26, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
@@ -580,8 +616,9 @@ function AccInspectorPanel({ debt, isAdmin, onFullScreen, onAllPaid }) {
                     <span style={{ flex:1, marginRight:8 }}>
                       {item.item_name}
                       {item.note && <span style={{ color:C.violet, fontSize:11 }}> [{item.note}]</span>}
+                      {item.price < 0 && <SaleTag />}
                     </span>
-                    <span style={{ flexShrink:0, fontFamily:MONO }}>{fmt(item.price)}</span>
+                    <span style={{ flexShrink:0, fontFamily:MONO, color: item.price < 0 ? C.emeraldDeep : undefined, fontWeight: item.price < 0 ? 700 : undefined }}>{fmt(item.price)}</span>
                   </div>
                 ))}
               </div>
@@ -731,6 +768,7 @@ export function DebtPage({ isAdmin = false }) {
   const [debtFilter, setDebtFilter] = useState('active'); // 'active' | 'done'
   const [paidTickets, setPaidTickets] = useState([]);
   const [showHistoryNew, setShowHistoryNew] = useState(() => !localStorage.getItem('history_tab_seen'));
+  const [showInsightsNew, setShowInsightsNew] = useState(() => !localStorage.getItem('insights_tab_seen'));
   const [debts, setDebts]       = useState([]);
   const [selected, setSelected] = useState(null);
   const [qrPerson, setQrPerson] = useState(null);
@@ -793,12 +831,16 @@ export function DebtPage({ isAdmin = false }) {
 
       {/* ── Tab bar ── */}
       <div style={{ display:'flex', alignItems:'center', gap:2, padding:'10px 20px 0', flexShrink:0, borderBottom:`1px solid ${C.hl}`, background:C.cream }}>
-        {[['debt','Công nợ'],['history','Lịch sử ăn']].map(([key, label]) => (
+        {[['debt','Công nợ'],['history','Lịch sử ăn'],['insights','Lex']].map(([key, label]) => (
           <button key={key} onClick={() => {
             setTab(key);
             if (key === 'history' && showHistoryNew) {
               setShowHistoryNew(false);
               localStorage.setItem('history_tab_seen', '1');
+            }
+            if (key === 'insights' && showInsightsNew) {
+              setShowInsightsNew(false);
+              localStorage.setItem('insights_tab_seen', '1');
             }
           }} style={{
             padding:'7px 16px', border:'none', cursor:'pointer', fontSize:12, fontWeight:700,
@@ -811,8 +853,17 @@ export function DebtPage({ isAdmin = false }) {
             position: 'relative', zIndex: tab === key ? 1 : 0,
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
+            {key === 'insights' && <Sparkles size={12} className="dt-twinkle" color={C.magentaInk} />}
             {label}
             {key === 'history' && showHistoryNew && (
+              <span style={{
+                background: '#ef4444', color: '#fff',
+                fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
+                padding: '1px 5px', borderRadius: 20,
+                lineHeight: '14px',
+              }}>NEW</span>
+            )}
+            {key === 'insights' && showInsightsNew && (
               <span style={{
                 background: '#ef4444', color: '#fff',
                 fontSize: 9, fontWeight: 800, letterSpacing: '0.04em',
@@ -828,6 +879,13 @@ export function DebtPage({ isAdmin = false }) {
       {tab === 'history' && (
         <div style={{ flex:1, overflow:'hidden' }}>
           <HistoryPage />
+        </div>
+      )}
+
+      {/* ── AI insights tab ── */}
+      {tab === 'insights' && (
+        <div style={{ flex:1, overflow:'hidden' }}>
+          <InsightsPage />
         </div>
       )}
 

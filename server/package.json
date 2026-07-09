@@ -17,11 +17,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.198",
     "better-sqlite3": "^12.9.0",
     "botbuilder": "^4.23.3",
     "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "nodemailer": "^9.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "supertest": "^7.2.2",

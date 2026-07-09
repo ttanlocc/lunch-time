@@ -78,4 +78,17 @@ export const CREATE_TABLES = `
     matched_payment_id INTEGER REFERENCES payments(id),
     notes TEXT
   );
+
+  -- AI-generated insights cache. One row per (date, kind) so the daily LLM call
+  -- runs at most once and web/Teams just read the cached text. 'kind' lets us
+  -- store different flavours later (e.g. 'daily_suggestion', 'weekly_summary').
+  CREATE TABLE IF NOT EXISTS insights_cache (
+    date TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    content TEXT NOT NULL,
+    source TEXT,
+    model TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (date, kind)
+  );
 `;

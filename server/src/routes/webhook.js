@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { getDb } from '../db/index.js';
 import { broadcast } from '../services/sse.js';
 import { parseQrCode, levenshtein, extractSenderName } from '../services/qrCode.js';
+import { sendPaymentConfirmation } from '../services/debtReminder.js';
 
 export const webhookRouter = Router();
 
@@ -95,7 +96,9 @@ function getUnpaidDays(db, personName) {
     dayMap[o.date] = (dayMap[o.date] || 0) + o.total_price;
   }
 
-  return Object.entries(dayMap).filter(([, amount]) => amount > 0).map(([date, amount]) => ({ date, amount }));
+  // Keep discount days (net < 0) so the auto-match total equals the net owed;
+  // only drop days that settle to exactly 0.
+  return Object.entries(dayMap).filter(([, amount]) => amount !== 0).map(([date, amount]) => ({ date, amount }));
 }
 
 function logWebhookEvent(db, { sepayId, rawContent, transferAmount, sepayRef }) {
@@ -142,6 +145,7 @@ webhookRouter.post('/sepay', (req, res) => {
         `).run(referenceCode ?? null, paidAt, qrParsed.qrCode);
         db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(payment.id, eventId);
         broadcast('payment_confirmed', { person_name: payment.person_name, amount: transferAmount });
+        sendPaymentConfirmation(db, payment.person_name, transferAmount);
         return res.json({ success: true, method: 'qr_code' });
       }
 
@@ -185,6 +189,7 @@ webhookRouter.post('/sepay', (req, res) => {
       })();
       db.prepare(`UPDATE webhook_events SET status='matched' WHERE id=?`).run(eventId);
       broadcast('payment_confirmed', { person_name: canonicalName, amount: transferAmount });
+      sendPaymentConfirmation(db, canonicalName, transferAmount);
       return res.json({ success: true, method: 'fuzzy_name' });
     }
 
@@ -263,6 +268,7 @@ webhookRouter.post('/unmatched/:id/resolve', (req, res) => {
     const matched = db.prepare(`SELECT id FROM payments WHERE person_name=? ORDER BY id DESC LIMIT 1`).get(person_name);
     db.prepare(`UPDATE webhook_events SET status='matched', matched_payment_id=? WHERE id=?`).run(matched?.id ?? null, evt.id);
     broadcast('payment_confirmed', { person_name, amount: evt.transfer_amount });
+    sendPaymentConfirmation(db, person_name, evt.transfer_amount);
     return res.json({ success: true });
   }
 

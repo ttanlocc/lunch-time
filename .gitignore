@@ -11,3 +11,6 @@ server/lunch.db
 server/lunch.db-shm
 server/lunch.db-wal
 /*.png
+
+# Graph delegated refresh token (secret)
+data/graph-token.json

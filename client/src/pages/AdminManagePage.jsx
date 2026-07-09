@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from '../lib/api.js';
 import { useSSE } from '../hooks/useSSE.js';
 import { ChevronLeft, ChevronRight, Lock, Unlock, Trash2, CheckCircle2, Circle, AlertCircle } from 'lucide-react';
+import DebtReminderPanel from '../components/DebtReminderPanel.jsx';
 
 function getWeekNumber(date = new Date()) {
   const d = new Date(date);
@@ -236,6 +237,11 @@ export function AdminManagePage() {
           </>
         )}
       </div>
+
+      {/* ── Debt reminder email panel ── */}
+      {isUnlocked && (
+        <DebtReminderPanel password={password} onAuthError={handleAuthError} />
+      )}
 
       {/* ── Week summary bar ── */}
       {days.length > 0 && (

@@ -1,9 +1,10 @@
 // server/src/routes/debts.js
 import { Router } from 'express';
 import { getDb } from '../db/index.js';
-import { getWeekNumber } from '../services/debtCalculator.js';
+import { getWeekNumber, getAccumulatedDebts } from '../services/debtCalculator.js';
 import { broadcast } from '../services/sse.js';
 import { buildQrCode } from '../services/qrCode.js';
+import { sendDebtReminders } from '../services/debtReminder.js';
 
 export const debtsRouter = Router();
 
@@ -34,7 +35,9 @@ function getUnpaidDaysForPerson(db, personName) {
   }
 
   return Object.entries(dayMap)
-    .filter(([, amount]) => amount > 0)
+    // Keep discount days (net < 0) so QR/pay-now charges the net owed; only
+    // drop days that settle to exactly 0.
+    .filter(([, amount]) => amount !== 0)
     .map(([date, amount]) => ({ date, amount }));
 }
 
@@ -108,43 +111,7 @@ debtsRouter.get('/', (req, res) => {
 
 // GET /api/debts/accumulated
 debtsRouter.get('/accumulated', (req, res) => {
-  const db = getDb();
-
-  const orders = db.prepare(`
-    SELECT o.person_name, o.date, o.price as total_price
-    FROM orders o
-    ORDER BY o.date
-  `).all();
-
-  // Case/whitespace-insensitive key so payment & exclusion rows always line up
-  // with order person_names (other endpoints use lower(...) — match them here).
-  const nkey = (name, date) => `${String(name).trim().toLowerCase()}|${date}`;
-  const excludedSet = new Set(
-    db.prepare('SELECT person_name, date FROM day_exclusions').all().map(e => nkey(e.person_name, e.date))
-  );
-  const paidSet = new Set(
-    db.prepare("SELECT person_name, date FROM payments WHERE status='paid'").all().map(p => nkey(p.person_name, p.date))
-  );
-
-  const personDayMap = {};
-  for (const o of orders) {
-    if (excludedSet.has(nkey(o.person_name, o.date)) || paidSet.has(nkey(o.person_name, o.date))) continue;
-    if (!personDayMap[o.person_name]) personDayMap[o.person_name] = {};
-    personDayMap[o.person_name][o.date] = (personDayMap[o.person_name][o.date] || 0) + o.total_price;
-  }
-
-  const result = [];
-  for (const [person_name, dayMap] of Object.entries(personDayMap)) {
-    const unpaid_days = Object.entries(dayMap)
-      .filter(([, amount]) => amount > 0)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, amount]) => ({ date, amount }));
-    const total_amount = unpaid_days.reduce((s, d) => s + d.amount, 0);
-    if (total_amount > 0) result.push({ person_name, total_amount, unpaid_days });
-  }
-
-  result.sort((a, b) => b.total_amount - a.total_amount);
-  res.json({ debts: result });
+  res.json({ debts: getAccumulatedDebts(getDb()) });
 });
 
 // GET /api/debts/paid  — paid payments grouped into closed tickets
@@ -318,4 +285,95 @@ debtsRouter.post('/exclude-day', (req, res) => {
 
   broadcast('debt_updated', { person_name, date });
   res.json({ success: true });
+});
+
+// ─── People directory (name → email) ───────────────────────────────────────
+// GET /api/debts/people — list everyone with their email + current debt total,
+// so the admin can see at a glance who still needs an email filled in.
+debtsRouter.get('/people', (req, res) => {
+  const db = getDb();
+  const people = db.prepare('SELECT name, email, active, notify_weekly, notify_monthend, notify_receipt FROM people ORDER BY name').all();
+  const debtByName = new Map(
+    getAccumulatedDebts(db).map(d => [d.person_name.trim().toLowerCase(), d.total_amount])
+  );
+  res.json({
+    people: people.map(p => ({
+      ...p,
+      total_amount: debtByName.get(p.name.trim().toLowerCase()) || 0,
+    })),
+  });
+});
+
+// PUT /api/debts/people — upsert a person's email / active flag
+debtsRouter.put('/people', (req, res) => {
+  const { name, email, active, password } = req.body;
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'wrong_password' });
+  if (!name) return res.status(400).json({ error: 'name required' });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO people (name, email, active, updated_at)
+    VALUES (@name, @email, @active, datetime('now'))
+    ON CONFLICT(name) DO UPDATE SET
+      email = excluded.email,
+      active = excluded.active,
+      updated_at = datetime('now')
+  `).run({ name, email: email || null, active: active === false ? 0 : 1 });
+
+  res.json({ success: true });
+});
+
+// PUT /api/debts/people/me — self-service: a colleague sets their OWN email +
+// reminder opt-in from the public debt page. No admin password (matches the
+// app's open trust model — anyone already picks any name and edits orders),
+// but scoped to a single existing person so it can only touch email/active.
+debtsRouter.put('/people/me', (req, res) => {
+  const { name, email, active, notify_weekly, notify_monthend, notify_receipt } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: 'name required' });
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ error: 'invalid_email' });
+  }
+
+  const bit = (v) => (v === false || v === 0 ? 0 : 1); // default on
+
+  const db = getDb();
+  db.prepare(`
+    INSERT INTO people (name, email, active, notify_weekly, notify_monthend, notify_receipt, updated_at)
+    VALUES (@name, @email, @active, @nw, @nm, @nr, datetime('now'))
+    ON CONFLICT(name) DO UPDATE SET
+      email = excluded.email,
+      active = excluded.active,
+      notify_weekly = excluded.notify_weekly,
+      notify_monthend = excluded.notify_monthend,
+      notify_receipt = excluded.notify_receipt,
+      updated_at = datetime('now')
+  `).run({
+    name: String(name).trim(),
+    email: email || null,
+    active: bit(active),
+    nw: bit(notify_weekly),
+    nm: bit(notify_monthend),
+    nr: bit(notify_receipt),
+  });
+
+  res.json({ success: true });
+});
+
+// POST /api/debts/remind — send the debt reminder email now (manual trigger).
+// body: { password, only?: person_name, dryRun?: boolean }
+debtsRouter.post('/remind', async (req, res) => {
+  const { password, only = null, dryRun = false } = req.body || {};
+  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+  if (!ADMIN_PASSWORD || password !== ADMIN_PASSWORD) return res.status(401).json({ error: 'wrong_password' });
+
+  try {
+    const result = await sendDebtReminders(getDb(), { only, dryRun });
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: 'reminder_failed', message: err.message });
+  }
 });

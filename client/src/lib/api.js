@@ -34,4 +34,11 @@ export const api = {
   getPersonQr: (name) => request('GET', `/debts/person/${encodeURIComponent(name)}/qr`),
   getUnmatched: () => request('GET', '/webhook/unmatched'),
   resolveUnmatched: (id, body) => request('POST', `/webhook/unmatched/${id}/resolve`, body),
+  getPeople: () => request('GET', '/debts/people'),
+  savePerson: (body) => request('PUT', '/debts/people', body),
+  savePersonPrefs: (body) => request('PUT', '/debts/people/me', body),
+  sendReminders: (body) => request('POST', '/debts/remind', body),
+  getInsightsDashboard: () => request('GET', '/insights/dashboard'),
+  getDailySuggestion: (refresh = false) => request('GET', `/insights/daily-suggestion${refresh ? '?refresh=1' : ''}`),
+  getLexBoard: () => request('GET', '/insights/lex-board'),
 };
