@@ -41,4 +41,7 @@ export const api = {
   getInsightsDashboard: () => request('GET', '/insights/dashboard'),
   getDailySuggestion: (refresh = false) => request('GET', `/insights/daily-suggestion${refresh ? '?refresh=1' : ''}`),
   getLexBoard: () => request('GET', '/insights/lex-board'),
+  getPersonInsights: (name) => request('GET', `/insights/person/${encodeURIComponent(name)}`),
+  chatWithLex: (body) => request('POST', '/insights/chat', body),
+  sendChatFeedback: (body) => request('POST', '/insights/chat/feedback', body),
 };

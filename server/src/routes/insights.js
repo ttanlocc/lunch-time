@@ -17,10 +17,12 @@ import {
   getSpendingStats,
   getPersonProfile,
 } from '../services/foodAnalyzer.js';
-import { isAiConfigured } from '../services/aiAnalyst.js';
+import { isAiConfigured, chatWithLex, chatWithLexStream } from '../services/aiAnalyst.js';
 import { getWeatherSnapshot } from '../services/weather.js';
 import { WIDGET_TYPES } from '../services/widgetCatalog.js';
 import { resolveDailySuggestion } from '../services/widgetData.js';
+import { logChatTurn, logChatFeedback } from '../services/chatLog.js';
+import { randomUUID } from 'crypto';
 
 export const insightsRouter = Router();
 
@@ -70,6 +72,93 @@ insightsRouter.get('/lex-board', async (req, res) => {
     return { type: w.type, title: w.title, data: null, error: String(s.reason?.message || s.reason) };
   });
   res.json({ widgets });
+});
+
+// Chat với Lex: a member asks free-form questions about their own eating history
+// ("thứ 3 tôi có ăn không?", "tuần trước tôi ăn gì?"). The model calls read-only
+// tools to answer — see chatWithLex/aiAnalyst.js. history is capped server-side
+// so a long client transcript can't blow up the prompt.
+insightsRouter.post('/chat', async (req, res) => {
+  const { name, message, history, taste } = req.body || {};
+  if (!name || !message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'name and message required' });
+  }
+  const thread_id = req.body.thread_id || randomUUID();
+  const turn_id = randomUUID();
+  const started = Date.now();
+  try {
+    const recent = Array.isArray(history) ? history.slice(-10) : [];
+    const result = await chatWithLex({ name, message, history: recent, taste: taste ?? null });
+    logChatTurn({
+      thread_id, turn_id, name, question: message,
+      answer: result.text, source: result.source, model: result.model,
+      widgets: (result.widgets || []).map(w => w.type),
+      duration_ms: Date.now() - started, streamed: false, error: result.error,
+    });
+    res.json({ ...result, thread_id, turn_id });
+  } catch (err) {
+    console.error('[insights] chat error:', err);
+    res.status(500).json({ error: 'chat failed' });
+  }
+});
+
+// Streaming twin of /chat over Server-Sent Events. Emits:
+//   event: tool   {tool}          — Lex called a read-only tool (client shows a
+//                                    "đang tra…" status chip)
+//   event: delta  {text}          — a chunk of the answer, as the model writes it
+//   event: done   {text,widgets,source,model} — final canonical answer + slips
+// X-Accel-Buffering:no keeps nginx from buffering the stream into one blob.
+insightsRouter.post('/chat/stream', async (req, res) => {
+  const { name, message, history, taste } = req.body || {};
+  if (!name || !message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'name and message required' });
+  }
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+  const send = (event, data) => res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+
+  const thread_id = req.body.thread_id || randomUUID();
+  const turn_id = randomUUID();
+  const started = Date.now();
+  let ttft = null;
+  const tools = [];
+  try {
+    const recent = Array.isArray(history) ? history.slice(-10) : [];
+    const result = await chatWithLexStream(
+      { name, message, history: recent, taste: taste ?? null },
+      {
+        onDelta: (text) => { if (ttft == null) ttft = Date.now() - started; send('delta', { text }); },
+        onTool: (tool) => { tools.push(tool); send('tool', { tool }); },
+      },
+    );
+    send('done', { text: result.text, widgets: result.widgets || [], source: result.source, model: result.model, thread_id, turn_id });
+    logChatTurn({
+      thread_id, turn_id, name, question: message,
+      answer: result.text, source: result.source, model: result.model,
+      tools, widgets: (result.widgets || []).map(w => w.type),
+      ttft_ms: ttft, duration_ms: Date.now() - started, streamed: true, error: result.error,
+    });
+  } catch (err) {
+    console.error('[insights] chat/stream error:', err);
+    send('done', { text: 'Xin lỗi, Lex chưa trả lời được câu này. Thử hỏi lại nhé.', widgets: [], source: 'fallback', thread_id, turn_id });
+    logChatTurn({ thread_id, turn_id, name, question: message, source: 'fallback', ttft_ms: ttft, duration_ms: Date.now() - started, streamed: true, error: String(err?.message || err) });
+  }
+  res.end();
+});
+
+// 👍/👎 on a Lex answer → appended to the same JSONL (type:'feedback'),
+// correlated to the turn by turn_id so we can mine what users disliked.
+insightsRouter.post('/chat/feedback', (req, res) => {
+  const { thread_id, turn_id, name, rating, comment } = req.body || {};
+  if (!turn_id || (rating !== 'up' && rating !== 'down')) {
+    return res.status(400).json({ error: 'turn_id and rating (up|down) required' });
+  }
+  const note = typeof comment === 'string' && comment.trim() ? comment.trim().slice(0, 500) : undefined;
+  logChatFeedback({ thread_id: thread_id ?? null, turn_id, name: name ?? null, rating, comment: note });
+  res.json({ ok: true });
 });
 
 insightsRouter.get('/person/:name', (req, res) => {

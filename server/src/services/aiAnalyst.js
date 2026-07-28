@@ -43,6 +43,32 @@ Yêu cầu đầu ra:
   hệ tự nhiên — nhưng KHÔNG bịa thời tiết nếu không được cung cấp.
 - Không markdown, không bullet, chỉ văn xuôi ngắn.`;
 
+// Chat mode: Lex answers a specific member's questions about their own eating
+// history. Identity + today's date are dynamic → injected into the USER prompt
+// (see chatWithLex), NOT hardcoded here.
+const CHAT_SYSTEM_PROMPT = `Bạn là Lex, trợ lý ăn trưa thân thiện của một team ở Việt Nam.
+
+Người đang trò chuyện với bạn là một thành viên cụ thể (tên được cung cấp trong
+tin nhắn). Khi họ nói "tôi/mình/em" là đang nói về CHÍNH họ — hãy tra dữ liệu của
+đúng người đó.
+
+Bạn có các tool ĐỌC (read-only, không thể sửa dữ liệu) để tra cứu:
+get_person_orders, get_person_profile, get_person_debt, get_overview,
+get_top_dishes, get_longest_uneaten, get_rotation_suggestion,
+get_spending_stats. Câu hỏi về công nợ ("tôi nợ bao nhiêu", "nợ ngày nào") thì
+dùng get_person_debt. Câu hỏi "đã trả tiền chưa" cho 1 khoảng thời gian thì dùng
+get_person_orders và NHÌN CỜ paid của TỪNG bữa (1 = đã trả, 0 = chưa). Hãy GỌI TOOL để
+lấy dữ liệu thật thay vì đoán — TUYỆT ĐỐI KHÔNG bịa món ăn, con số hay ngày tháng
+không có trong dữ liệu/tool. Nếu dữ liệu không đủ để trả lời, cứ nói thẳng là chưa
+có thông tin.
+
+QUAN TRỌNG khi nói về thanh toán: phải nhất quán với dữ liệu. KHÔNG nói "chưa trả
+đồng nào" nếu thực tế có bữa đã trả (paid=1). Nếu một số bữa đã trả và một số chưa,
+hãy nói rõ bữa nào đã trả, bữa nào còn nợ — đừng gộp bừa.
+
+Trả lời ngắn gọn, tự nhiên bằng tiếng Việt, văn xuôi thuần (không markdown, không
+bullet), giọng vui vẻ như đồng nghiệp.`;
+
 /**
  * Generate today's suggestion text. Returns { text, source, model, context, weather }.
  * `source` is 'ai' when MiniMax produced it, 'fallback' when it was assembled
@@ -78,6 +104,125 @@ Sau đó viết gợi ý món trưa cho hôm nay.`;
 }
 
 /**
+ * Chat với Lex: answer one member's free-form question about their own eating
+ * history. Unlike the daily suggestion (which pre-bundles a numeric snapshot),
+ * chat hands the model only the question + who's asking + today's date, then
+ * lets it CALL the read-only tools (esp. get_person_orders/get_person_profile)
+ * to fetch exactly what it needs. `history` is the recent transcript
+ * ([{ role: 'user'|'lex', text }]) so follow-up questions keep context.
+ * Returns { text, source, model } — `source` is 'ai' when MiniMax answered,
+ * 'fallback' when AI is unconfigured or errored.
+ */
+export async function chatWithLex({ name, message, history = [], taste = null }) {
+  if (!isAiConfigured()) {
+    return { text: 'Chat với Lex chưa được bật (thiếu cấu hình AI).', source: 'fallback', model: null, widgets: [] };
+  }
+
+  // Compact prior transcript so follow-ups ("còn hôm kia thì sao?") have context.
+  const transcript = (history || [])
+    .filter(m => m && m.text)
+    .map(m => `${m.role === 'lex' ? 'Lex' : name}: ${m.text}`)
+    .join('\n');
+
+  const userPrompt = `Hôm nay là ${today()} (YYYY-MM-DD). Người đang hỏi tên là "${name}".`
+    + (taste ? `\nKhẩu vị của ${name}: ${taste} (ưu tiên gợi ý hợp khẩu vị này khi được hỏi nên ăn gì).` : '')
+    + (transcript ? `\n\nCác câu đã trao đổi trước đó:\n${transcript}` : '')
+    + `\n\nCâu hỏi: ${message}`;
+
+  try {
+    // capture collects tool_use blocks + their tool_result payloads so we can
+    // render the underlying data as receipt slips alongside Lex's prose answer.
+    const capture = { toolUses: [], toolResults: {} };
+    const text = await runModel(userPrompt, CHAT_SYSTEM_PROMPT, capture);
+    const widgets = buildWidgets(capture);
+    if (!text || !text.trim()) {
+      return { text: 'Xin lỗi, Lex chưa trả lời được câu này. Thử hỏi lại nhé.', source: 'fallback', model: MODEL, widgets: [] };
+    }
+    return { text: text.trim(), source: 'ai', model: MODEL, widgets };
+  } catch (err) {
+    console.error('[aiAnalyst] chatWithLex failed:', err?.message || err);
+    return { text: 'Xin lỗi, Lex chưa trả lời được câu này. Thử hỏi lại nhé.', source: 'fallback', model: MODEL, widgets: [], error: String(err?.message || err) };
+  }
+}
+
+// Build the chat user-prompt (shared by the buffered + streaming paths).
+function buildChatPrompt({ name, message, history = [], taste = null }) {
+  const transcript = (history || [])
+    .filter(m => m && m.text)
+    .map(m => `${m.role === 'lex' ? 'Lex' : name}: ${m.text}`)
+    .join('\n');
+  return `Hôm nay là ${today()} (YYYY-MM-DD). Người đang hỏi tên là "${name}".`
+    + (taste ? `\nKhẩu vị của ${name}: ${taste} (ưu tiên gợi ý hợp khẩu vị này khi được hỏi nên ăn gì).` : '')
+    + (transcript ? `\n\nCác câu đã trao đổi trước đó:\n${transcript}` : '')
+    + `\n\nCâu hỏi: ${message}`;
+}
+
+/**
+ * Streaming twin of chatWithLex. Same tools/guardrails/capture, but text is
+ * pushed to `onDelta(chunk)` token-by-token as the model writes, so the client
+ * can render the answer live instead of waiting ~8s for the first byte. Returns
+ * the same final { text, source, model, widgets } once the turn completes.
+ */
+export async function chatWithLexStream({ name, message, history = [], taste = null }, callbacks = {}) {
+  if (!isAiConfigured()) {
+    return { text: 'Chat với Lex chưa được bật (thiếu cấu hình AI).', source: 'fallback', model: null, widgets: [] };
+  }
+  const userPrompt = buildChatPrompt({ name, message, history, taste });
+  try {
+    const capture = { toolUses: [], toolResults: {} };
+    const text = await runModelStream(userPrompt, CHAT_SYSTEM_PROMPT, capture, callbacks);
+    const widgets = buildWidgets(capture);
+    if (!text || !text.trim()) {
+      return { text: 'Xin lỗi, Lex chưa trả lời được câu này. Thử hỏi lại nhé.', source: 'fallback', model: MODEL, widgets: [] };
+    }
+    return { text: text.trim(), source: 'ai', model: MODEL, widgets };
+  } catch (err) {
+    console.error('[aiAnalyst] chatWithLexStream failed:', err?.message || err);
+    return { text: 'Xin lỗi, Lex chưa trả lời được câu này. Thử hỏi lại nhé.', source: 'fallback', model: MODEL, widgets: [], error: String(err?.message || err) };
+  }
+}
+
+// Map captured lunch_data tool calls → receipt-slip descriptors for the client.
+// Each tool_use is matched to its tool_result (by tool_use_id); the result text
+// is the JSON our dbTools produced via asJson. Bad/odd payloads are skipped
+// (never thrown) and the whole list is capped so a chatty model can't flood the
+// thread.
+function buildWidgets(capture) {
+  const HUMANIZE = {
+    get_overview: 'Tổng quan',
+    get_longest_uneaten: 'Món lâu chưa ăn',
+    get_top_dishes: 'Món ăn nhiều nhất',
+    get_rotation_suggestion: 'Gợi ý xoay tua',
+    get_spending_stats: 'Chi tiêu',
+  };
+  const widgets = [];
+  for (const tu of capture.toolUses) {
+    if (widgets.length >= 3) break;
+    const raw = capture.toolResults[tu.id];
+    if (raw == null) continue;
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      continue; // odd/unparseable payload → skip this widget, never throw
+    }
+    const short = tu.name.replace(/^mcp__lunch_data__/, '');
+    if (short === 'get_person_orders') {
+      const { from, to } = tu.input || {};
+      const title = from || to ? `Bữa ${from || '…'} → ${to || '…'}` : 'Các bữa đã ăn';
+      widgets.push({ type: 'orders', title, data });
+    } else if (short === 'get_person_debt') {
+      widgets.push({ type: 'debt', title: 'Công nợ', data });
+    } else if (short === 'get_person_profile') {
+      widgets.push({ type: 'profile', title: 'Hồ sơ ăn uống', data });
+    } else {
+      widgets.push({ type: 'generic', title: HUMANIZE[short] || short, data });
+    }
+  }
+  return widgets;
+}
+
+/**
  * Build a clean env for the SDK subprocess. We must NOT blindly inherit the
  * parent env: when this server runs inside (or is launched from) a Claude Code
  * session, vars like CLAUDE_CODE_* / CLAUDECODE make the spawned CLI prefer the
@@ -107,7 +252,7 @@ function buildChildEnv() {
  * prompt). maxTurns > 1 leaves room for a couple of tool round-trips before
  * the model writes its final answer.
  */
-async function runModel(prompt) {
+async function runModel(prompt, systemPrompt = SYSTEM_PROMPT, capture = null) {
   let finalText = '';
   const assistantChunks = [];
 
@@ -115,7 +260,7 @@ async function runModel(prompt) {
     prompt,
     options: {
       model: MODEL,
-      systemPrompt: SYSTEM_PROMPT,
+      systemPrompt,
       maxTurns: 6,
       allowedTools: [...LUNCH_DATA_ALLOWED_TOOLS],
       disallowedTools: ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Task'],
@@ -127,6 +272,23 @@ async function runModel(prompt) {
     if (message.type === 'assistant' && Array.isArray(message.message?.content)) {
       for (const block of message.message.content) {
         if (block.type === 'text') assistantChunks.push(block.text);
+        if (capture && block.type === 'tool_use') {
+          capture.toolUses.push({ id: block.id, name: block.name, input: block.input });
+        }
+      }
+    }
+    // Tool results arrive on 'user'-type messages as tool_result blocks; match
+    // them back to the tool_use by tool_use_id. The result text is the JSON our
+    // dbTools produced via asJson.
+    if (capture && message.type === 'user' && Array.isArray(message.message?.content)) {
+      for (const block of message.message.content) {
+        if (block.type === 'tool_result') {
+          const c = block.content;
+          const textPart = Array.isArray(c)
+            ? c.filter(p => p?.type === 'text').map(p => p.text).join('')
+            : (typeof c === 'string' ? c : '');
+          capture.toolResults[block.tool_use_id] = textPart;
+        }
       }
     }
     if (message.type === 'result' && typeof message.result === 'string') {
@@ -135,6 +297,78 @@ async function runModel(prompt) {
   }
 
   return finalText || assistantChunks.join('').trim();
+}
+
+/**
+ * Streaming variant of runModel. With includePartialMessages the SDK emits
+ * `stream_event` messages carrying the raw Anthropic streaming events; we relay
+ * text_delta chunks to callbacks.onDelta as they arrive, and announce each
+ * lunch_data tool call via callbacks.onTool (for the client's "Lex đang tra…"
+ * status). Tool capture (for receipt slips) works exactly as in runModel. The
+ * final assembled text is still returned once the turn completes.
+ */
+async function runModelStream(prompt, systemPrompt, capture, callbacks = {}) {
+  const { onDelta, onTool } = callbacks;
+  let finalText = '';
+  const streamed = [];
+
+  for await (const message of query({
+    prompt,
+    options: {
+      model: MODEL,
+      systemPrompt,
+      maxTurns: 6,
+      allowedTools: [...LUNCH_DATA_ALLOWED_TOOLS],
+      disallowedTools: ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep', 'WebFetch', 'WebSearch', 'Task'],
+      settingSources: [],
+      mcpServers: { [LUNCH_DATA_SERVER_NAME]: lunchDataMcpServer },
+      env: buildChildEnv(),
+      includePartialMessages: true,
+    },
+  })) {
+    // Live text tokens.
+    if (message.type === 'stream_event') {
+      const ev = message.event;
+      if (ev?.type === 'content_block_delta' && ev.delta?.type === 'text_delta' && ev.delta.text) {
+        streamed.push(ev.delta.text);
+        onDelta?.(ev.delta.text);
+      }
+      continue;
+    }
+    // Full assistant message → capture tool_use + announce it.
+    if (message.type === 'assistant' && Array.isArray(message.message?.content)) {
+      for (const block of message.message.content) {
+        if (block.type === 'tool_use') {
+          capture.toolUses.push({ id: block.id, name: block.name, input: block.input });
+          onTool?.(block.name.replace(/^mcp__lunch_data__/, ''));
+        }
+      }
+    }
+    if (message.type === 'user' && Array.isArray(message.message?.content)) {
+      for (const block of message.message.content) {
+        if (block.type === 'tool_result') {
+          const c = block.content;
+          const textPart = Array.isArray(c)
+            ? c.filter(p => p?.type === 'text').map(p => p.text).join('')
+            : (typeof c === 'string' ? c : '');
+          capture.toolResults[block.tool_use_id] = textPart;
+        }
+      }
+    }
+    if (message.type === 'result' && typeof message.result === 'string') {
+      finalText = message.result;
+    }
+  }
+
+  return finalText || streamed.join('').trim();
+}
+
+// Local YYYY-MM-DD (same convention foodAnalyzer uses for orders.date). Small
+// self-contained copy so chat has "today" without importing analytics internals.
+function today() {
+  const d = new Date();
+  const tz = d.getTimezoneOffset() * 60000;
+  return new Date(d - tz).toISOString().slice(0, 10);
 }
 
 // Trim the context so we only send compact, relevant slices to the model.

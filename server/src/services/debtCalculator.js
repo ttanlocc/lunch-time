@@ -65,3 +65,17 @@ export function getAccumulatedDebts(db) {
   result.sort((a, b) => b.total_amount - a.total_amount);
   return result;
 }
+
+/**
+ * One person's outstanding debt, derived from getAccumulatedDebts (the single
+ * source of truth) so the number the AI chat quotes matches the debt board
+ * exactly. Case/whitespace-insensitive name match. Returns
+ * { person_name, total_amount, unpaid_days }; a person with nothing owed returns
+ * total_amount 0 and an empty unpaid_days (not absent) so the caller/model can
+ * say "bạn không nợ gì" cleanly.
+ */
+export function getPersonDebt(name, db) {
+  const key = String(name || '').trim().toLowerCase();
+  const found = getAccumulatedDebts(db).find(d => d.person_name.trim().toLowerCase() === key);
+  return found || { person_name: name, total_amount: 0, unpaid_days: [] };
+}

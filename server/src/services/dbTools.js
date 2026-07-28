@@ -20,7 +20,9 @@ import {
   getRotationSuggestion,
   getSpendingStats,
   getPersonProfile,
+  getPersonOrders,
 } from './foodAnalyzer.js';
+import { getPersonDebt } from './debtCalculator.js';
 
 const asJson = (data) => ({ content: [{ type: 'text', text: JSON.stringify(data) }] });
 const readOnly = { annotations: { readOnlyHint: true } };
@@ -35,6 +37,8 @@ const TOOL_NAMES = [
   'get_rotation_suggestion',
   'get_spending_stats',
   'get_person_profile',
+  'get_person_orders',
+  'get_person_debt',
 ];
 
 const tools = [
@@ -97,6 +101,28 @@ const tools = [
       name: z.string().describe('Tên người cần tra cứu (so khớp không phân biệt hoa/thường)'),
     },
     async ({ name }) => asJson(getPersonProfile(name, getReadonlyDb())),
+    readOnly,
+  ),
+
+  tool(
+    'get_person_orders',
+    'Lịch sử các bữa 1 người đã ăn trong 1 khoảng ngày: trả về từng ngày kèm tên món, loại, giá, và cờ paid (1 = ngày đó ĐÃ trả tiền, 0 = chưa). Dùng để trả lời "ngày X người đó có ăn không / ăn món gì", "tuần trước ăn gì", và "đã trả tiền chưa" (nhìn cờ paid từng bữa). Nếu bỏ trống from/to sẽ lấy toàn bộ.',
+    {
+      name: z.string().describe('Tên người cần tra (không phân biệt hoa/thường)'),
+      from: z.string().optional().describe('Ngày bắt đầu YYYY-MM-DD (tuỳ chọn)'),
+      to: z.string().optional().describe('Ngày kết thúc YYYY-MM-DD (tuỳ chọn)'),
+    },
+    async ({ name, from, to }) => asJson(getPersonOrders(name, { from: from ?? null, to: to ?? null }, getReadonlyDb())),
+    readOnly,
+  ),
+
+  tool(
+    'get_person_debt',
+    'Công nợ ăn trưa hiện tại của 1 người: tổng số tiền còn nợ (total_amount) và danh sách từng ngày chưa trả (unpaid_days: date + amount). Đã trừ ngày đã trả và ngày được loại. total_amount = 0 nghĩa là không nợ gì. Dùng để trả lời "tôi còn nợ bao nhiêu / nợ những ngày nào".',
+    {
+      name: z.string().describe('Tên người cần tra (không phân biệt hoa/thường)'),
+    },
+    async ({ name }) => asJson(getPersonDebt(name, getReadonlyDb())),
     readOnly,
   ),
 ];

@@ -10,6 +10,7 @@
 // menu_items.price (that was the source of the money-drift bug fixed earlier).
 
 import { getDb } from '../db/index.js';
+import { getPersonDebt } from './debtCalculator.js';
 
 // Prices are stored as whole VND (e.g. 40000 = 40k). No cents.
 
@@ -142,13 +143,59 @@ export function getPersonProfile(name, db = getDb()) {
     FROM orders WHERE lower(person_name) = lower(?)
   `).get(name);
 
+  // This-month meal count: orders on/after the first day of the current month.
+  const monthStart = `${today().slice(0, 7)}-01`;
+  const monthRow = db.prepare(`
+    SELECT COUNT(*) AS c
+    FROM orders
+    WHERE lower(person_name) = lower(@name) AND date >= @monthStart
+  `).get({ name, monthStart });
+
+  // Debt comes from debtCalculator (single source of truth — same number the
+  // debt board shows). getPersonDebt returns { total_amount, unpaid_days }.
+  const debt = getPersonDebt(name, db);
+
   return {
     name,
     ...totals,
+    debt_amount: debt.total_amount,
+    debt_days: debt.unpaid_days.length,
+    meals_this_month: monthRow.c,
     favourites: favourites.map(f => ({ ...f, days_since: daysSince(f.last_eaten) })),
     missedFavourites: getLongestUneaten({ person: name, limit: 5 }, db)
       .filter(d => d.times_eaten > 0),
   };
+}
+
+/**
+ * One person's raw meal history within an optional date window — every day they
+ * ate, with the dish name/category/price for that day. Powers the "Chat với Lex"
+ * questions like "thứ 3 tôi có ăn không?" / "tuần trước tôi ăn gì?": the model
+ * reads these rows and phrases the answer, never inventing dates or dishes.
+ * `from`/`to` are inclusive YYYY-MM-DD bounds; null = unbounded on that side.
+ * @param {string} name
+ * @param {{ from?: string|null, to?: string|null }} opts
+ */
+export function getPersonOrders(name, { from = null, to = null } = {}, db = getDb()) {
+  // `paid` (0/1) tells whether that day was already settled (a payments row with
+  // status='paid' for the same person+date). Without it the model can't answer
+  // "đã trả tiền chưa?" correctly — it would only see unpaid days and wrongly
+  // claim nothing was paid. Match person_name case/space-insensitively, same as
+  // getAccumulatedDebts.
+  return db.prepare(`
+    SELECT o.date, mi.name, mi.category, o.price,
+      EXISTS(
+        SELECT 1 FROM payments p
+        WHERE lower(trim(p.person_name)) = lower(trim(o.person_name))
+          AND p.date = o.date AND p.status = 'paid'
+      ) AS paid
+    FROM orders o
+    JOIN menu_items mi ON mi.id = o.menu_item_id
+    WHERE lower(o.person_name) = lower(@name)
+      AND (@from IS NULL OR o.date >= @from)
+      AND (@to   IS NULL OR o.date <= @to)
+    ORDER BY o.date DESC, mi.name
+  `).all({ name, from, to });
 }
 
 /**
