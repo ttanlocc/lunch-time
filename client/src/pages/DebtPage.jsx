@@ -503,14 +503,13 @@ export function DebtPage({ isAdmin = false }) {
   const totalCount = data.debts.length;
   const accumulatedCount = accumulated.debts.length;
   const accumulatedTotal = accumulated.debts.reduce((s, d) => s + d.total_amount, 0);
-  const paidPct = totalCount > 0 ? Math.round((paidCount / totalCount) * 100) : 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <PaymentSuccessToast toasts={toasts} />
       {/* Header */}
       <div style={{ padding: 'var(--header-pad)', borderBottom: '1px solid var(--color-border)', background: 'var(--color-card)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: tab === 'week' && totalCount > 0 ? 10 : 0 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700 }}>Công nợ</div>
             <div style={{ fontSize: 12, color: 'var(--color-text-light)' }}>SePay tự xác nhận khi nhận đúng nội dung</div>
@@ -530,11 +529,6 @@ export function DebtPage({ isAdmin = false }) {
             </div>
           )}
         </div>
-        {tab === 'week' && totalCount > 0 && (
-          <div style={{ position: 'relative', height: 5, borderRadius: 999, background: '#f3e8ff', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', left: 0, top: 0, height: '100%', width: `${paidPct}%`, borderRadius: 999, background: 'linear-gradient(90deg,#a855f7,#ec4899)', transition: 'width 0.4s ease' }} />
-          </div>
-        )}
       </div>
 
       {/* Tabs */}
